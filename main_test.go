@@ -17,6 +17,7 @@ func TestMain(m *testing.M) {
 		s.RegisterPlugin(junit.NewPlugin())
 
 		s.AddSuite(&RiemannSuite{})
+		s.AddSuite(&CloudwatchSuite{})
 		s.AddSuite(&MultiReporterSuite{})
 	})
 }

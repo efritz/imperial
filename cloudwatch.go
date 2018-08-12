@@ -33,6 +33,7 @@ func NewCloudwatchReporter(namespace string, configs ...CloudwatchConfigFunc) *C
 
 	return &CloudwatchReporter{
 		logger:       config.logger,
+		clock:        config.clock,
 		configs:      config.configs,
 		api:          makeCloudwatchAPI(config),
 		batchSize:    config.batchSize,
@@ -73,6 +74,7 @@ func (c *CloudwatchReporter) Report(name string, value int, configs ...ConfigFun
 				"Cloudwatch buffer for namespace %s full, dropping oldest datum",
 				namespace,
 			)
+
 		default:
 		}
 	}
@@ -112,6 +114,8 @@ func (c *CloudwatchReporter) ensurePublisher(namespace string) {
 }
 
 func (c *CloudwatchReporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
+	defer c.wg.Done()
+
 	var (
 		ticker = c.clock.NewTicker(c.tickDuration)
 		data   = []*cloudwatch.MetricDatum{}
@@ -164,11 +168,15 @@ loop:
 func serializeCloudwatchDimensions(attributes map[string]string) []*cloudwatch.Dimension {
 	dimensions := make([]*cloudwatch.Dimension, 0, len(attributes))
 	for key, value := range attributes {
-		dimensions = append(dimensions, &cloudwatch.Dimension{
-			Name:  stringptr(key),
-			Value: stringptr(value),
-		})
+		dimensions = append(dimensions, serializeCloudwatchDimension(key, value))
 	}
 
 	return dimensions
+}
+
+func serializeCloudwatchDimension(key, value string) *cloudwatch.Dimension {
+	return &cloudwatch.Dimension{
+		Name:  stringptr(key),
+		Value: stringptr(value),
+	}
 }
