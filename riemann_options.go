@@ -6,40 +6,40 @@ import (
 	"github.com/efritz/glock"
 )
 
-type RiemannConfigFunc func(r *RiemannReporter)
+type RiemannConfigFunc func(r *riemannConfig)
 
 func WithRiemannReportConfigs(configs ...ConfigFunc) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.configs = append(r.configs, configs...) }
+	return func(r *riemannConfig) { r.configs = append(r.configs, configs...) }
 }
 
 func WithRiemannBatchSize(batchSize int) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.batchSize = batchSize }
+	return func(r *riemannConfig) { r.batchSize = batchSize }
 }
 
 func WithRiemannQueueSize(queueSize int) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.queueSize = queueSize }
+	return func(r *riemannConfig) { r.queueSize = queueSize }
 }
 
 func WithRiemannTickDuration(tickDuration time.Duration) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.tickDuration = tickDuration }
+	return func(r *riemannConfig) { r.tickDuration = tickDuration }
 }
 
 func WithRiemannConnectionTimeout(connectionTimeout time.Duration) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.connectionTimeout = connectionTimeout }
+	return func(r *riemannConfig) { r.connectionTimeout = connectionTimeout }
 }
 
 func WithRiemannTTL(ttl float32) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.ttl = ttl }
+	return func(r *riemannConfig) { r.ttl = ttl }
 }
 
 func WithRiemannLogger(logger Logger) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.logger = logger }
+	return func(r *riemannConfig) { r.logger = logger }
 }
 
 func WithRiemannClock(clock glock.Clock) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.clock = clock }
+	return func(r *riemannConfig) { r.clock = clock }
 }
 
 func WithRiemannDialer(dialer RiemannDialer) RiemannConfigFunc {
-	return func(r *RiemannReporter) { r.dialer = dialer }
+	return func(r *riemannConfig) { r.dialer = dialer }
 }

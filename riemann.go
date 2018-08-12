@@ -20,25 +20,32 @@ import (
 
 type (
 	RiemannReporter struct {
-		addr              string
-		conn              io.ReadWriteCloser
+		logger   Logger
+		clock    glock.Clock
+		dialer   RiemannDialer
+		configs  []ConfigFunc
+		ttl      float32
+		conn     io.ReadWriteCloser
+		events   chan *riemannEvent
+		messages chan []byte
+		done     chan struct{}
+		once     *sync.Once
+		wg       *sync.WaitGroup
+	}
+
+	RiemannDialer func() (io.ReadWriteCloser, error)
+
+	riemannConfig struct {
+		logger            Logger
+		clock             glock.Clock
+		dialer            RiemannDialer
 		configs           []ConfigFunc
 		ttl               float32
 		batchSize         int
 		queueSize         int
 		tickDuration      time.Duration
 		connectionTimeout time.Duration
-		logger            Logger
-		clock             glock.Clock
-		dialer            RiemannDialer
-		events            chan *riemannEvent
-		messages          chan []byte
-		done              chan struct{}
-		once              *sync.Once
-		wg                *sync.WaitGroup
 	}
-
-	RiemannDialer func() (io.ReadWriteCloser, error)
 
 	riemannEvent struct {
 		service    string
@@ -49,42 +56,49 @@ type (
 )
 
 func NewRiemannReporter(addr string, configs ...RiemannConfigFunc) *RiemannReporter {
-	// TODO - can break
-
-	reporter := &RiemannReporter{
-		addr:              addr,
-		configs:           []ConfigFunc{},
-		ttl:               60,
-		batchSize:         500, // TODO - default?
-		queueSize:         50,  // TODO - default?
-		tickDuration:      time.Second * 5,
-		connectionTimeout: time.Second * 5,
+	config := &riemannConfig{
 		logger:            NewNilLogger(),
 		clock:             glock.NewRealClock(),
-		events:            make(chan *riemannEvent),
-		done:              make(chan struct{}),
-		once:              &sync.Once{},
-		wg:                &sync.WaitGroup{},
+		configs:           []ConfigFunc{},
+		ttl:               60,
+		batchSize:         5000,
+		queueSize:         360,
+		tickDuration:      time.Second * 5,
+		connectionTimeout: time.Second * 5,
 	}
 
 	for _, f := range configs {
-		f(reporter)
+		f(config)
 	}
 
-	reporter.messages = make(chan []byte, reporter.queueSize)
-
-	if reporter.dialer == nil {
-		reporter.dialer = func() (io.ReadWriteCloser, error) {
+	dialer := config.dialer
+	if dialer == nil {
+		dialer = func() (io.ReadWriteCloser, error) {
 			return net.DialTimeout(
 				"tcp",
 				addr,
-				reporter.connectionTimeout,
+				config.connectionTimeout,
 			)
 		}
 	}
 
-	reporter.wg.Add(1)
-	go reporter.batch()
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	reporter := &RiemannReporter{
+		dialer:   dialer,
+		logger:   config.logger,
+		clock:    config.clock,
+		configs:  config.configs,
+		ttl:      config.ttl,
+		events:   make(chan *riemannEvent),
+		messages: make(chan []byte, config.queueSize),
+		done:     make(chan struct{}),
+		once:     &sync.Once{},
+		wg:       wg,
+	}
+
+	go reporter.batch(config.batchSize, config.tickDuration)
 	go reporter.publish()
 
 	return reporter
@@ -110,13 +124,13 @@ func (r *RiemannReporter) Shutdown() {
 	r.wg.Wait()
 }
 
-func (r *RiemannReporter) batch() {
+func (r *RiemannReporter) batch(batchSize int, tickDuration time.Duration) {
 	defer close(r.messages)
 
 	var (
 		hostname, _ = os.Hostname()
-		ticker      = r.clock.NewTicker(r.tickDuration)
-		batch       = make([]*proto.Event, 0, r.batchSize)
+		ticker      = r.clock.NewTicker(tickDuration)
+		batch       = make([]*proto.Event, 0, batchSize)
 	)
 
 	sendBatch := func() {
@@ -166,7 +180,7 @@ loop:
 				Attributes:   attributes,
 			})
 
-			if len(batch) < r.batchSize {
+			if len(batch) < batchSize {
 				continue
 			}
 
