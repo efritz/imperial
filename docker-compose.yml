@@ -1,0 +1,9 @@
+version: '3'
+services:
+  riemann:
+    image: rlister/riemann
+    ports:
+      - 5555:5555
+    volumes:
+      - ./etc:/app/etc
+    #   - ./tmp:/app/log
