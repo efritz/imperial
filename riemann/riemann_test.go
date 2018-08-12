@@ -1,4 +1,4 @@
-package imperial
+package riemann
 
 import (
 	"bytes"
@@ -8,15 +8,17 @@ import (
 
 	"github.com/aphistic/sweet"
 	"github.com/efritz/glock"
-	"github.com/efritz/imperial/proto"
 	pb "github.com/golang/protobuf/proto"
 	. "github.com/onsi/gomega"
+
+	"github.com/efritz/imperial/base"
+	"github.com/efritz/imperial/proto"
 )
 
 type RiemannSuite struct{}
 
 func (s *RiemannSuite) TestReport(t sweet.T) {
-	reporter, w, clock := makeRiemannReporter()
+	reporter, w, clock := makeReporter()
 
 	t1 := time.Now()
 	t2 := time.Now().Add(time.Minute)
@@ -29,44 +31,44 @@ func (s *RiemannSuite) TestReport(t sweet.T) {
 	reporter.Report("d", 4)
 	reporter.Report("e", 5)
 
-	Eventually(func() ([]*riemannEvent, error) {
-		return deserializeRiemannBatch(w.Bytes())
+	Eventually(func() ([]*event, error) {
+		return deserializeBatch(w.Bytes())
 	}).Should(ConsistOf(
-		&riemannEvent{"a", 1, t1.Unix(), map[string]string{}},
-		&riemannEvent{"b", 2, t1.Unix(), map[string]string{}},
-		&riemannEvent{"c", 3, t1.Unix(), map[string]string{}},
-		&riemannEvent{"d", 4, t2.Unix(), map[string]string{}},
-		&riemannEvent{"e", 5, t2.Unix(), map[string]string{}},
+		&event{"a", 1, t1.Unix(), map[string]string{}},
+		&event{"b", 2, t1.Unix(), map[string]string{}},
+		&event{"c", 3, t1.Unix(), map[string]string{}},
+		&event{"d", 4, t2.Unix(), map[string]string{}},
+		&event{"e", 5, t2.Unix(), map[string]string{}},
 	))
 }
 
 func (s *RiemannSuite) TestReportWithAttributes(t sweet.T) {
-	reporter, w, clock := makeRiemannReporter(
-		WithRiemannReportConfigs(WithAttributes(map[string]string{
+	reporter, w, clock := makeReporter(
+		WithReportConfigs(base.WithAttributes(map[string]string{
 			"x": "xv",
 			"y": "xy",
 		})),
 	)
 
 	reporter.Report("a", 1)
-	reporter.Report("b", 2, WithAttributes(map[string]string{"z": "z1"}))
+	reporter.Report("b", 2, base.WithAttributes(map[string]string{"z": "z1"}))
 	reporter.Report("c", 3)
-	reporter.Report("d", 4, WithAttributes(map[string]string{"z": "z2"}))
+	reporter.Report("d", 4, base.WithAttributes(map[string]string{"z": "z2"}))
 	reporter.Report("e", 5)
 
-	Eventually(func() ([]*riemannEvent, error) {
-		return deserializeRiemannBatch(w.Bytes())
+	Eventually(func() ([]*event, error) {
+		return deserializeBatch(w.Bytes())
 	}).Should(ConsistOf(
-		&riemannEvent{"a", 1, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
-		&riemannEvent{"b", 2, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy", "z": "z1"}},
-		&riemannEvent{"c", 3, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
-		&riemannEvent{"d", 4, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy", "z": "z2"}},
-		&riemannEvent{"e", 5, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
+		&event{"a", 1, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
+		&event{"b", 2, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy", "z": "z1"}},
+		&event{"c", 3, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
+		&event{"d", 4, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy", "z": "z2"}},
+		&event{"e", 5, clock.Now().Unix(), map[string]string{"x": "xv", "y": "xy"}},
 	))
 }
 
 func (s *RiemannSuite) TestMultipleBatches(t sweet.T) {
-	reporter, w, clock := makeRiemannReporter()
+	reporter, w, clock := makeReporter()
 
 	for i := 0; i < 3; i++ {
 		w.Reset()
@@ -79,14 +81,14 @@ func (s *RiemannSuite) TestMultipleBatches(t sweet.T) {
 		reporter.Report("d", 10*i+4)
 		reporter.Report("e", 10*i+5)
 
-		Eventually(func() ([]*riemannEvent, error) {
-			return deserializeRiemannBatch(w.Bytes())
+		Eventually(func() ([]*event, error) {
+			return deserializeBatch(w.Bytes())
 		}).Should(ConsistOf(
-			&riemannEvent{"a", 10*int64(i) + 1, t1, map[string]string{}},
-			&riemannEvent{"b", 10*int64(i) + 2, t1, map[string]string{}},
-			&riemannEvent{"c", 10*int64(i) + 3, t1, map[string]string{}},
-			&riemannEvent{"d", 10*int64(i) + 4, t1, map[string]string{}},
-			&riemannEvent{"e", 10*int64(i) + 5, t1, map[string]string{}},
+			&event{"a", 10*int64(i) + 1, t1, map[string]string{}},
+			&event{"b", 10*int64(i) + 2, t1, map[string]string{}},
+			&event{"c", 10*int64(i) + 3, t1, map[string]string{}},
+			&event{"d", 10*int64(i) + 4, t1, map[string]string{}},
+			&event{"e", 10*int64(i) + 5, t1, map[string]string{}},
 		))
 	}
 
@@ -97,7 +99,7 @@ func (s *RiemannSuite) TestMultipleBatches(t sweet.T) {
 }
 
 func (s *RiemannSuite) TestPartialBatchTick(t sweet.T) {
-	reporter, w, clock := makeRiemannReporter()
+	reporter, w, clock := makeReporter()
 
 	for i := 0; i < 3; i++ {
 		w.Reset()
@@ -107,17 +109,17 @@ func (s *RiemannSuite) TestPartialBatchTick(t sweet.T) {
 		t1 := clock.Now().Unix()
 		clock.Advance(time.Second * 5)
 
-		Eventually(func() ([]*riemannEvent, error) {
-			return deserializeRiemannBatch(w.Bytes())
+		Eventually(func() ([]*event, error) {
+			return deserializeBatch(w.Bytes())
 		}).Should(ConsistOf(
-			&riemannEvent{"a", 10*int64(i) + 1, t1, map[string]string{}},
+			&event{"a", 10*int64(i) + 1, t1, map[string]string{}},
 		))
 	}
 }
 
 func (s *RiemannSuite) TestFullBuffer(t sweet.T) {
 	var (
-		conn, w = makeRiemannConn()
+		conn, w = makeConn()
 		clock   = glock.NewMockClock()
 		block   = make(chan struct{})
 	)
@@ -127,12 +129,12 @@ func (s *RiemannSuite) TestFullBuffer(t sweet.T) {
 		return conn, nil
 	}
 
-	reporter := NewRiemannReporter(
+	reporter := NewReporter(
 		"localhost:5555",
-		WithRiemannClock(clock),
-		WithRiemannDialer(dialer),
-		WithRiemannBatchSize(5),
-		WithRiemannQueueSize(25),
+		WithClock(clock),
+		WithDialer(dialer),
+		WithBatchSize(5),
+		WithQueueSize(25),
 	)
 
 	for i := 0; i < 500; i++ {
@@ -147,7 +149,7 @@ func (s *RiemannSuite) TestFullBuffer(t sweet.T) {
 	}
 
 	Eventually(func() (int, error) {
-		messages, err := deserializeRiemannBatches(w.Bytes())
+		messages, err := deserializeBatches(w.Bytes())
 		return len(messages), err
 	}).Should(BeNumerically("~", 200, 25))
 }
@@ -155,8 +157,8 @@ func (s *RiemannSuite) TestFullBuffer(t sweet.T) {
 func (s *RiemannSuite) TestReconnect(t sweet.T) {
 	var (
 		w           = &bytes.Buffer{}
-		conn        = NewMockConn(makeRiemannReader(), w)
-		failingConn = NewMockConn(makeRiemannReader(), &failingWriter{})
+		conn        = NewMockConn(makeReader(), w)
+		failingConn = NewMockConn(makeReader(), &failingWriter{})
 		clock       = glock.NewMockClock()
 		dials       = 0
 	)
@@ -171,39 +173,39 @@ func (s *RiemannSuite) TestReconnect(t sweet.T) {
 		return conn, nil
 	}
 
-	reporter := NewRiemannReporter(
+	reporter := NewReporter(
 		"localhost:5555",
-		WithRiemannClock(clock),
-		WithRiemannDialer(dialer),
-		WithRiemannBatchSize(5),
+		WithClock(clock),
+		WithDialer(dialer),
+		WithBatchSize(5),
 	)
 
 	for i := 0; i < 30; i++ {
 		reporter.Report("a", i)
 	}
 
-	Eventually(func() ([]*riemannEvent, error) {
-		return deserializeRiemannBatches(w.Bytes())
+	Eventually(func() ([]*event, error) {
+		return deserializeBatches(w.Bytes())
 	}).Should(ConsistOf(
-		&riemannEvent{"a", 20, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 21, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 22, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 23, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 24, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 25, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 26, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 27, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 28, clock.Now().Unix(), map[string]string{}},
-		&riemannEvent{"a", 29, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 20, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 21, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 22, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 23, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 24, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 25, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 26, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 27, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 28, clock.Now().Unix(), map[string]string{}},
+		&event{"a", 29, clock.Now().Unix(), map[string]string{}},
 	))
 
 	Expect(dials).To(Equal(5))
 }
 
 func (s *RiemannSuite) TestShutdownClosesConnection(t sweet.T) {
-	reporter := NewRiemannReporter(
+	reporter := NewReporter(
 		"localhost:5555",
-		WithRiemannDialer(func() (io.ReadWriteCloser, error) {
+		WithDialer(func() (io.ReadWriteCloser, error) {
 			select {}
 		}),
 	)
@@ -219,11 +221,11 @@ func (s *RiemannSuite) TestShutdownClosesConnection(t sweet.T) {
 }
 
 func (s *RiemannSuite) TestShutdownDuringConnection(t sweet.T) {
-	conn, _ := makeRiemannConn()
+	conn, _ := makeConn()
 
-	reporter := NewRiemannReporter(
+	reporter := NewReporter(
 		"localhost:5555",
-		WithRiemannDialer(func() (io.ReadWriteCloser, error) {
+		WithDialer(func() (io.ReadWriteCloser, error) {
 			return conn, nil
 		}),
 	)
@@ -242,9 +244,9 @@ func (s *RiemannSuite) TestShutdownDuringConnection(t sweet.T) {
 //
 // Constructors
 
-func makeRiemannReporter(configs ...RiemannConfigFunc) (Reporter, *bytes.Buffer, *glock.MockClock) {
+func makeReporter(configs ...ConfigFunc) (*Reporter, *bytes.Buffer, *glock.MockClock) {
 	var (
-		conn, w = makeRiemannConn()
+		conn, w = makeConn()
 		clock   = glock.NewMockClock()
 	)
 
@@ -252,13 +254,13 @@ func makeRiemannReporter(configs ...RiemannConfigFunc) (Reporter, *bytes.Buffer,
 		return conn, nil
 	}
 
-	reporter := NewRiemannReporter(
+	reporter := NewReporter(
 		"localhost:5555",
 		append(
-			[]RiemannConfigFunc{
-				WithRiemannClock(clock),
-				WithRiemannDialer(dialer),
-				WithRiemannBatchSize(5),
+			[]ConfigFunc{
+				WithClock(clock),
+				WithDialer(dialer),
+				WithBatchSize(5),
 			},
 			configs...,
 		)...,
@@ -267,19 +269,22 @@ func makeRiemannReporter(configs ...RiemannConfigFunc) (Reporter, *bytes.Buffer,
 	return reporter, w, clock
 }
 
-func makeRiemannConn() (*mockConn, *bytes.Buffer) {
+func makeConn() (*mockConn, *bytes.Buffer) {
 	var (
 		w = &bytes.Buffer{}
-		r = makeRiemannReader()
+		r = makeReader()
 		c = NewMockConn(r, w)
 	)
 
 	return c, w
 }
 
-func makeRiemannReader() io.Reader {
-	data, _ := pb.Marshal(&proto.Msg{Ok: boolptr(true)})
-	prefix, _ := serializeMessagePrefix(len(data))
+func makeReader() io.Reader {
+	var (
+		val       = true
+		data, _   = pb.Marshal(&proto.Msg{Ok: &val})
+		prefix, _ = serializeMessagePrefix(len(data))
+	)
 
 	return bytes.NewReader(append(prefix, data...))
 }
@@ -310,9 +315,9 @@ func (w *failingWriter) Write(p []byte) (n int, err error) {
 //
 // Payload Deserialization Helpers
 
-func deserializeRiemannBatch(data []byte) ([]*riemannEvent, error) {
+func deserializeBatch(data []byte) ([]*event, error) {
 	reader := bytes.NewReader(data)
-	events, err := riemannEventsFromReader(reader)
+	events, err := eventsFromReader(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -324,13 +329,13 @@ func deserializeRiemannBatch(data []byte) ([]*riemannEvent, error) {
 	return events, nil
 }
 
-func deserializeRiemannBatches(data []byte) ([]*riemannEvent, error) {
+func deserializeBatches(data []byte) ([]*event, error) {
 	reader := bytes.NewReader(data)
 
-	allEvents := []*riemannEvent{}
+	allEvents := []*event{}
 
 	for {
-		events, err := riemannEventsFromReader(reader)
+		events, err := eventsFromReader(reader)
 		if err != nil {
 			if err == io.EOF {
 				return allEvents, nil
@@ -343,7 +348,7 @@ func deserializeRiemannBatches(data []byte) ([]*riemannEvent, error) {
 	}
 }
 
-func riemannEventsFromReader(r io.Reader) ([]*riemannEvent, error) {
+func eventsFromReader(r io.Reader) ([]*event, error) {
 	raw, err := readPrefixedMessage(r)
 	if err != nil {
 		return nil, err
@@ -354,17 +359,17 @@ func riemannEventsFromReader(r io.Reader) ([]*riemannEvent, error) {
 		return nil, err
 	}
 
-	events := []*riemannEvent{}
-	for _, event := range payload.Events {
+	events := []*event{}
+	for _, ev := range payload.Events {
 		attributes := map[string]string{}
-		for _, pair := range event.GetAttributes() {
+		for _, pair := range ev.GetAttributes() {
 			attributes[pair.GetKey()] = pair.GetValue()
 		}
 
-		events = append(events, &riemannEvent{
-			service:    event.GetService(),
-			metric:     event.GetMetricSint64(),
-			time:       event.GetTime(),
+		events = append(events, &event{
+			service:    ev.GetService(),
+			metric:     ev.GetMetricSint64(),
+			time:       ev.GetTime(),
 			attributes: attributes,
 		})
 	}

@@ -1,13 +1,16 @@
 // DO NOT EDIT
 // Code generated automatically by github.com/efritz/go-mockgen
-// $ go-mockgen github.com/efritz/imperial -i Reporter -o mock_reporter_test.go -f
+// $ go-mockgen github.com/efritz/imperial/base -i Reporter -o mock_reporter_test.go -f
 
-package imperial
+package multi
 
-import "sync"
+import (
+	base "github.com/efritz/imperial/base"
+	"sync"
+)
 
 type MockReporter struct {
-	ReportFunc   func(string, int, ...ConfigFunc)
+	ReportFunc   func(string, int, ...base.ConfigFunc)
 	histReport   []ReporterReportParamSet
 	ShutdownFunc func()
 	histShutdown []ReporterShutdownParamSet
@@ -16,7 +19,7 @@ type MockReporter struct {
 type ReporterReportParamSet struct {
 	Arg0 string
 	Arg1 int
-	Arg2 []ConfigFunc
+	Arg2 []base.ConfigFunc
 }
 type ReporterShutdownParamSet struct{}
 
@@ -26,7 +29,7 @@ func NewMockReporter() *MockReporter {
 	m.ShutdownFunc = m.defaultShutdownFunc
 	return m
 }
-func (m *MockReporter) Report(v0 string, v1 int, v2 ...ConfigFunc) {
+func (m *MockReporter) Report(v0 string, v1 int, v2 ...base.ConfigFunc) {
 	m.mutex.Lock()
 	m.histReport = append(m.histReport, ReporterReportParamSet{v0, v1, v2})
 	m.mutex.Unlock()
@@ -60,7 +63,7 @@ func (m *MockReporter) ShutdownFuncCallParams() []ReporterShutdownParamSet {
 	return m.histShutdown
 }
 
-func (m *MockReporter) defaultReportFunc(v0 string, v1 int, v2 ...ConfigFunc) {
+func (m *MockReporter) defaultReportFunc(v0 string, v1 int, v2 ...base.ConfigFunc) {
 	return
 }
 func (m *MockReporter) defaultShutdownFunc() {

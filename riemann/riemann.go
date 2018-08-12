@@ -1,4 +1,4 @@
-package imperial
+package riemann
 
 import (
 	"bytes"
@@ -12,29 +12,31 @@ import (
 
 	"github.com/efritz/backoff"
 	"github.com/efritz/glock"
-	"github.com/efritz/imperial/proto"
 	"github.com/efritz/watchdog"
 	pb "github.com/golang/protobuf/proto"
+
+	"github.com/efritz/imperial/base"
+	"github.com/efritz/imperial/proto"
 )
 
 type (
-	RiemannReporter struct {
-		logger   Logger
+	Reporter struct {
+		logger   base.Logger
 		clock    glock.Clock
-		dialer   RiemannDialer
-		configs  []ConfigFunc
+		dialer   Dialer
+		configs  []base.ConfigFunc
 		ttl      float32
 		conn     io.ReadWriteCloser
-		events   chan *riemannEvent
+		events   chan *event
 		messages chan []byte
 		done     chan struct{}
 		once     *sync.Once
 		wg       *sync.WaitGroup
 	}
 
-	RiemannDialer func() (io.ReadWriteCloser, error)
+	Dialer func() (io.ReadWriteCloser, error)
 
-	riemannEvent struct {
+	event struct {
 		service    string
 		metric     int64
 		time       int64
@@ -42,8 +44,8 @@ type (
 	}
 )
 
-func NewRiemannReporter(addr string, configs ...RiemannConfigFunc) *RiemannReporter {
-	config := newRiemannConfig()
+func NewReporter(addr string, configs ...ConfigFunc) *Reporter {
+	config := newConfig()
 	for _, f := range configs {
 		f(config)
 	}
@@ -51,13 +53,13 @@ func NewRiemannReporter(addr string, configs ...RiemannConfigFunc) *RiemannRepor
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
-	reporter := &RiemannReporter{
+	reporter := &Reporter{
 		dialer:   makeDialer(addr, config),
 		logger:   config.logger,
 		clock:    config.clock,
 		configs:  config.configs,
 		ttl:      config.ttl,
-		events:   make(chan *riemannEvent),
+		events:   make(chan *event),
 		messages: make(chan []byte, config.queueSize),
 		done:     make(chan struct{}),
 		once:     &sync.Once{},
@@ -70,18 +72,18 @@ func NewRiemannReporter(addr string, configs ...RiemannConfigFunc) *RiemannRepor
 	return reporter
 }
 
-func (r *RiemannReporter) Report(name string, value int, configs ...ConfigFunc) {
-	options := applyConfigs(r.configs, configs)
+func (r *Reporter) Report(name string, value int, configs ...base.ConfigFunc) {
+	options := base.ApplyConfigs(r.configs, configs)
 
-	r.events <- &riemannEvent{
+	r.events <- &event{
 		service:    name,
 		metric:     int64(value),
 		time:       r.clock.Now().Unix(),
-		attributes: options.attributes,
+		attributes: options.Attributes,
 	}
 }
 
-func (r *RiemannReporter) Shutdown() {
+func (r *Reporter) Shutdown() {
 	r.once.Do(func() {
 		close(r.done)
 		close(r.events)
@@ -90,7 +92,7 @@ func (r *RiemannReporter) Shutdown() {
 	r.wg.Wait()
 }
 
-func (r *RiemannReporter) batch(batchSize int, tickDuration time.Duration) {
+func (r *Reporter) batch(batchSize int, tickDuration time.Duration) {
 	defer close(r.messages)
 
 	var (
@@ -130,7 +132,7 @@ loop:
 				Time:         &event.time,
 				Service:      &event.service,
 				MetricSint64: &event.metric,
-				Attributes:   serializeRiemannAttributes(event.attributes),
+				Attributes:   serializeAttributes(event.attributes),
 			})
 
 			if len(batch) < batchSize {
@@ -146,7 +148,7 @@ loop:
 	sendBatch()
 }
 
-func (r *RiemannReporter) sendToPublisher(serialized []byte) {
+func (r *Reporter) sendToPublisher(serialized []byte) {
 	for {
 		select {
 		case r.messages <- serialized:
@@ -162,7 +164,7 @@ func (r *RiemannReporter) sendToPublisher(serialized []byte) {
 	}
 }
 
-func (r *RiemannReporter) publish() {
+func (r *Reporter) publish() {
 	defer r.wg.Done()
 
 	for message := range r.messages {
@@ -181,7 +183,7 @@ func (r *RiemannReporter) publish() {
 	}
 }
 
-func (r *RiemannReporter) publishMessage(message []byte) error {
+func (r *Reporter) publishMessage(message []byte) error {
 	if !r.ensureConnection() {
 		return nil
 	}
@@ -197,7 +199,7 @@ func (r *RiemannReporter) publishMessage(message []byte) error {
 	return nil
 }
 
-func (r *RiemannReporter) ensureConnection() bool {
+func (r *Reporter) ensureConnection() bool {
 	for r.conn != nil {
 		return true
 	}
@@ -221,7 +223,7 @@ func (r *RiemannReporter) ensureConnection() bool {
 	)
 }
 
-func (r *RiemannReporter) connect() bool {
+func (r *Reporter) connect() bool {
 	conn, err := r.dialer()
 	if err != nil {
 		r.logger.Printf("Failed to connect to Riemann (%s)", err.Error())
@@ -232,11 +234,11 @@ func (r *RiemannReporter) connect() bool {
 	return true
 }
 
-func (r *RiemannReporter) write(message []byte) error {
+func (r *Reporter) write(message []byte) error {
 	return writePrefixedMessage(r.conn, message)
 }
 
-func (r *RiemannReporter) read() error {
+func (r *Reporter) read() error {
 	data, err := readPrefixedMessage(r.conn)
 	if err != nil {
 		return err
@@ -255,19 +257,26 @@ func (r *RiemannReporter) read() error {
 }
 
 //
-// Helpers
+// Serialization Helpers
 
-func serializeRiemannAttributes(eventAttributes map[string]string) []*proto.Attribute {
+func serializeAttributes(eventAttributes map[string]string) []*proto.Attribute {
 	attributes := make([]*proto.Attribute, 0, len(eventAttributes))
 	for key, value := range eventAttributes {
 		attributes = append(attributes, &proto.Attribute{
-			Key:   stringptr(key),
-			Value: stringptr(value),
+			Key:   strptr(key),
+			Value: strptr(value),
 		})
 	}
 
 	return attributes
 }
+
+func strptr(val string) *string {
+	return &val
+}
+
+//
+// IO Helpers
 
 func readPrefixedMessage(r io.Reader) ([]byte, error) {
 	var header uint32

@@ -1,6 +1,4 @@
-package imperial
-
-//go:generate go-mockgen github.com/efritz/imperial -i Reporter -o mock_reporter_test.go -f
+package multi
 
 import (
 	"testing"
@@ -16,8 +14,6 @@ func TestMain(m *testing.M) {
 	sweet.Run(m, func(s *sweet.S) {
 		s.RegisterPlugin(junit.NewPlugin())
 
-		s.AddSuite(&RiemannSuite{})
-		s.AddSuite(&CloudwatchSuite{})
 		s.AddSuite(&MultiReporterSuite{})
 	})
 }

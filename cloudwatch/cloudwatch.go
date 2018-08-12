@@ -1,19 +1,22 @@
-package imperial
+package cloudwatch
 
 import (
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface"
 	"github.com/efritz/glock"
+
+	"github.com/efritz/imperial/base"
 )
 
 type (
-	CloudwatchReporter struct {
-		logger       Logger
+	Reporter struct {
+		logger       base.Logger
 		clock        glock.Clock
-		configs      []ConfigFunc
+		configs      []base.ConfigFunc
 		api          cloudwatchiface.CloudWatchAPI
 		batchSize    int
 		bufferSize   int
@@ -25,17 +28,17 @@ type (
 	}
 )
 
-func NewCloudwatchReporter(namespace string, configs ...CloudwatchConfigFunc) *CloudwatchReporter {
-	config := newCloudwatchConfig(namespace)
+func NewReporter(namespace string, configs ...ConfigFunc) *Reporter {
+	config := newConfig(namespace)
 	for _, f := range configs {
 		f(config)
 	}
 
-	return &CloudwatchReporter{
+	return &Reporter{
 		logger:       config.logger,
 		clock:        config.clock,
 		configs:      config.configs,
-		api:          makeCloudwatchAPI(config),
+		api:          makeAPI(config),
 		batchSize:    config.batchSize,
 		bufferSize:   config.bufferSize,
 		tickDuration: config.tickDuration,
@@ -46,16 +49,16 @@ func NewCloudwatchReporter(namespace string, configs ...CloudwatchConfigFunc) *C
 	}
 }
 
-func (c *CloudwatchReporter) Report(name string, value int, configs ...ConfigFunc) {
+func (c *Reporter) Report(name string, value int, configs ...base.ConfigFunc) {
 	var (
-		options   = applyConfigs(c.configs, configs)
-		namespace = options.cloudwatchNamespace
+		options   = base.ApplyConfigs(c.configs, configs)
+		namespace = options.Namespace
 		datum     = &cloudwatch.MetricDatum{
-			MetricName: stringptr(name),
-			Timestamp:  timeptr(c.clock.Now()),
-			Value:      float64ptr(float64(value)),
-			Unit:       stringptr(string(options.cloudwatchUnit)),
-			Dimensions: serializeCloudwatchDimensions(options.attributes),
+			MetricName: aws.String(name),
+			Timestamp:  aws.Time(c.clock.Now()),
+			Value:      aws.Float64(float64(value)),
+			Unit:       aws.String(string(options.Unit)),
+			Dimensions: serializeDimensions(options.Attributes),
 		}
 	)
 
@@ -80,7 +83,7 @@ func (c *CloudwatchReporter) Report(name string, value int, configs ...ConfigFun
 	}
 }
 
-func (c *CloudwatchReporter) Shutdown() {
+func (c *Reporter) Shutdown() {
 	c.once.Do(func() {
 		c.mutex.Lock()
 		defer c.mutex.Unlock()
@@ -93,7 +96,7 @@ func (c *CloudwatchReporter) Shutdown() {
 	c.wg.Wait()
 }
 
-func (c *CloudwatchReporter) ensurePublisher(namespace string) {
+func (c *Reporter) ensurePublisher(namespace string) {
 	c.mutex.RLock()
 	if _, ok := c.namespaces[namespace]; ok {
 		c.mutex.RUnlock()
@@ -113,7 +116,7 @@ func (c *CloudwatchReporter) ensurePublisher(namespace string) {
 	}
 }
 
-func (c *CloudwatchReporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
+func (c *Reporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
 	defer c.wg.Done()
 
 	var (
@@ -127,7 +130,7 @@ func (c *CloudwatchReporter) publish(namespace string, ch <-chan *cloudwatch.Met
 		}
 
 		input := &cloudwatch.PutMetricDataInput{
-			Namespace:  stringptr(namespace),
+			Namespace:  aws.String(namespace),
 			MetricData: data,
 		}
 
@@ -165,18 +168,18 @@ loop:
 	putMetricData()
 }
 
-func serializeCloudwatchDimensions(attributes map[string]string) []*cloudwatch.Dimension {
+func serializeDimensions(attributes map[string]string) []*cloudwatch.Dimension {
 	dimensions := make([]*cloudwatch.Dimension, 0, len(attributes))
 	for key, value := range attributes {
-		dimensions = append(dimensions, serializeCloudwatchDimension(key, value))
+		dimensions = append(dimensions, serializeDimension(key, value))
 	}
 
 	return dimensions
 }
 
-func serializeCloudwatchDimension(key, value string) *cloudwatch.Dimension {
+func serializeDimension(key, value string) *cloudwatch.Dimension {
 	return &cloudwatch.Dimension{
-		Name:  stringptr(key),
-		Value: stringptr(value),
+		Name:  aws.String(key),
+		Value: aws.String(value),
 	}
 }

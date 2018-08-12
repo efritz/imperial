@@ -2,7 +2,7 @@
 // Code generated automatically by github.com/efritz/go-mockgen
 // $ go-mockgen github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface -i CloudWatchAPI -o mock_cloudwatch_api_test.go -f
 
-package imperial
+package cloudwatch
 
 import (
 	aws "github.com/aws/aws-sdk-go/aws"

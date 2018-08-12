@@ -1,4 +1,4 @@
-package imperial
+package cloudwatch
 
 //go:generate go-mockgen github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface -i CloudWatchAPI -o mock_cloudwatch_api_test.go -f
 
@@ -6,15 +6,17 @@ import (
 	"time"
 
 	"github.com/aphistic/sweet"
-	cloudwatch "github.com/aws/aws-sdk-go/service/cloudwatch"
+	"github.com/aws/aws-sdk-go/service/cloudwatch"
 	"github.com/efritz/glock"
 	. "github.com/onsi/gomega"
+
+	"github.com/efritz/imperial/base"
 )
 
 type CloudwatchSuite struct{}
 
 func (s *CloudwatchSuite) TestReport(t sweet.T) {
-	reporter, api, clock := makeCloudwatchReporter()
+	reporter, api, clock := makeReporter()
 
 	t1 := time.Now()
 	t2 := time.Now().Add(time.Minute)
@@ -48,26 +50,26 @@ func (s *CloudwatchSuite) TestReport(t sweet.T) {
 	Expect(*input.MetricData[3].Timestamp).To(Equal(t2))
 }
 func (s *CloudwatchSuite) TestReportWithAttributes(t sweet.T) {
-	reporter, api, _ := makeCloudwatchReporter(
-		WithCloudwatchReportConfigs(WithAttributes(map[string]string{
+	reporter, api, _ := makeReporter(
+		WithReportConfigs(base.WithAttributes(map[string]string{
 			"x": "xv",
 			"y": "xy",
 		})),
 	)
 
 	reporter.Report("a", 1)
-	reporter.Report("b", 2, WithAttributes(map[string]string{"z": "z1"}))
+	reporter.Report("b", 2, base.WithAttributes(map[string]string{"z": "z1"}))
 	reporter.Report("c", 3)
-	reporter.Report("d", 4, WithAttributes(map[string]string{"z": "z2"}))
+	reporter.Report("d", 4, base.WithAttributes(map[string]string{"z": "z2"}))
 	reporter.Report("e", 5)
 
 	// Wait until publish
 	Eventually(api.PutMetricDataFuncCallCount).Should(Equal(1))
 
-	d1 := serializeCloudwatchDimension("x", "xv")
-	d2 := serializeCloudwatchDimension("y", "xy")
-	d3 := serializeCloudwatchDimension("z", "z1")
-	d4 := serializeCloudwatchDimension("z", "z2")
+	d1 := serializeDimension("x", "xv")
+	d2 := serializeDimension("y", "xy")
+	d3 := serializeDimension("z", "z1")
+	d4 := serializeDimension("z", "z2")
 
 	// Inspect payload
 	input := api.PutMetricDataFuncCallParams()[0].Arg0
@@ -80,21 +82,21 @@ func (s *CloudwatchSuite) TestReportWithAttributes(t sweet.T) {
 }
 
 func (s *CloudwatchSuite) TestReportMultipleNamespaces(t sweet.T) {
-	reporter, api, _ := makeCloudwatchReporter(
-		WithCloudwatchReportConfigs(WithAttributes(map[string]string{
+	reporter, api, _ := makeReporter(
+		WithReportConfigs(base.WithAttributes(map[string]string{
 			"x": "xv",
 			"y": "xy",
 		})),
 	)
 
 	for i := 0; i < 5; i++ {
-		reporter.Report("a", i, WithCloudwatchNamespace("foo"))
-		reporter.Report("b", i, WithCloudwatchNamespace("bar"))
-		reporter.Report("c", i, WithCloudwatchNamespace("baz"))
+		reporter.Report("a", i, base.WithNamespace("foo"))
+		reporter.Report("b", i, base.WithNamespace("bar"))
+		reporter.Report("c", i, base.WithNamespace("baz"))
 
 		if i%2 == 0 {
 			// Will not trigger a batch to send
-			reporter.Report("d", i, WithCloudwatchNamespace("bonk"))
+			reporter.Report("d", i, base.WithNamespace("bonk"))
 		}
 	}
 
@@ -110,7 +112,7 @@ func (s *CloudwatchSuite) TestReportMultipleNamespaces(t sweet.T) {
 }
 
 func (s *CloudwatchSuite) TestMultipleBatches(t sweet.T) {
-	reporter, api, _ := makeCloudwatchReporter()
+	reporter, api, _ := makeReporter()
 
 	for i := 0; i < 3; i++ {
 		reporter.Report("a", 10*i+1)
@@ -138,7 +140,7 @@ func (s *CloudwatchSuite) TestMultipleBatches(t sweet.T) {
 }
 
 func (s *CloudwatchSuite) TestPartialBatchTick(t sweet.T) {
-	reporter, api, clock := makeCloudwatchReporter()
+	reporter, api, clock := makeReporter()
 
 	for i := 0; i < 3; i++ {
 		reporter.Report("a", 10*i+1)
@@ -158,9 +160,9 @@ func (s *CloudwatchSuite) TestPartialBatchTick(t sweet.T) {
 func (s *CloudwatchSuite) TestFullBuffer(t sweet.T) {
 	var (
 		block            = make(chan struct{})
-		reporter, api, _ = makeCloudwatchReporter(
-			WithCloudwatchBatchSize(5),
-			WithCloudwatchBufferSize(25))
+		reporter, api, _ = makeReporter(
+			WithBatchSize(5),
+			WithBufferSize(25))
 	)
 
 	api.PutMetricDataFunc = func(*cloudwatch.PutMetricDataInput) (*cloudwatch.PutMetricDataOutput, error) {
@@ -187,7 +189,7 @@ func (s *CloudwatchSuite) TestShutdown(t sweet.T) {
 	var (
 		sync             = make(chan struct{})
 		block            = make(chan struct{})
-		reporter, api, _ = makeCloudwatchReporter()
+		reporter, api, _ = makeReporter()
 	)
 
 	api.PutMetricDataFunc = func(input *cloudwatch.PutMetricDataInput) (*cloudwatch.PutMetricDataOutput, error) {
@@ -198,11 +200,11 @@ func (s *CloudwatchSuite) TestShutdown(t sweet.T) {
 		return nil, nil
 	}
 
-	reporter.Report("a", 1, WithCloudwatchNamespace("a"))
-	reporter.Report("b", 2, WithCloudwatchNamespace("b"))
-	reporter.Report("c", 3, WithCloudwatchNamespace("c"))
-	reporter.Report("d", 4, WithCloudwatchNamespace("d"))
-	reporter.Report("e", 5, WithCloudwatchNamespace("e"))
+	reporter.Report("a", 1, base.WithNamespace("a"))
+	reporter.Report("b", 2, base.WithNamespace("b"))
+	reporter.Report("c", 3, base.WithNamespace("c"))
+	reporter.Report("d", 4, base.WithNamespace("d"))
+	reporter.Report("e", 5, base.WithNamespace("e"))
 
 	go func() {
 		defer close(sync)
@@ -217,17 +219,17 @@ func (s *CloudwatchSuite) TestShutdown(t sweet.T) {
 //
 // Constructors
 
-func makeCloudwatchReporter(configs ...CloudwatchConfigFunc) (Reporter, *MockCloudWatchAPI, *glock.MockClock) {
+func makeReporter(configs ...ConfigFunc) (*Reporter, *MockCloudWatchAPI, *glock.MockClock) {
 	var (
 		api   = NewMockCloudWatchAPI()
 		clock = glock.NewMockClock()
 	)
 
-	reporter := NewCloudwatchReporter("ns", append(
-		[]CloudwatchConfigFunc{
-			WithCloudwatchAPI(api),
-			WithCloudwatchClock(clock),
-			WithCloudwatchBatchSize(5),
+	reporter := NewReporter("ns", append(
+		[]ConfigFunc{
+			WithAPI(api),
+			WithClock(clock),
+			WithBatchSize(5),
 		},
 		configs...,
 	)...)

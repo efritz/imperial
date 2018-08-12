@@ -1,4 +1,6 @@
-package imperial
+package multi
+
+//go:generate go-mockgen github.com/efritz/imperial/base -i Reporter -o mock_reporter_test.go -f
 
 import (
 	"github.com/aphistic/sweet"
@@ -14,7 +16,7 @@ func (s *MultiReporterSuite) TestReportDelegates(t sweet.T) {
 		r3 = NewMockReporter()
 	)
 
-	NewMultiReporter(r1, r2, r3).Report("requests", 35)
+	NewReporter(r1, r2, r3).Report("requests", 35)
 
 	for _, r := range []*MockReporter{r1, r2, r3} {
 		Expect(r.ReportFuncCallCount()).To(Equal(1))
@@ -30,7 +32,7 @@ func (s *MultiReporterSuite) TestShutdownDelegates(t sweet.T) {
 		r3 = NewMockReporter()
 	)
 
-	NewMultiReporter(r1, r2, r3).Shutdown()
+	NewReporter(r1, r2, r3).Shutdown()
 
 	for _, r := range []*MockReporter{r1, r2, r3} {
 		Expect(r.ShutdownFuncCallCount()).To(Equal(1))
