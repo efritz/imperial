@@ -6,7 +6,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"net"
 	"os"
 	"sync"
 	"time"
@@ -35,18 +34,6 @@ type (
 
 	RiemannDialer func() (io.ReadWriteCloser, error)
 
-	riemannConfig struct {
-		logger            Logger
-		clock             glock.Clock
-		dialer            RiemannDialer
-		configs           []ConfigFunc
-		ttl               float32
-		batchSize         int
-		queueSize         int
-		tickDuration      time.Duration
-		connectionTimeout time.Duration
-	}
-
 	riemannEvent struct {
 		service    string
 		metric     int64
@@ -56,37 +43,16 @@ type (
 )
 
 func NewRiemannReporter(addr string, configs ...RiemannConfigFunc) *RiemannReporter {
-	config := &riemannConfig{
-		logger:            NewNilLogger(),
-		clock:             glock.NewRealClock(),
-		configs:           []ConfigFunc{},
-		ttl:               60,
-		batchSize:         5000,
-		queueSize:         360,
-		tickDuration:      time.Second * 5,
-		connectionTimeout: time.Second * 5,
-	}
-
+	config := newRiemannConfig()
 	for _, f := range configs {
 		f(config)
-	}
-
-	dialer := config.dialer
-	if dialer == nil {
-		dialer = func() (io.ReadWriteCloser, error) {
-			return net.DialTimeout(
-				"tcp",
-				addr,
-				config.connectionTimeout,
-			)
-		}
 	}
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
 
 	reporter := &RiemannReporter{
-		dialer:   dialer,
+		dialer:   makeDialer(addr, config),
 		logger:   config.logger,
 		clock:    config.clock,
 		configs:  config.configs,
@@ -158,26 +124,13 @@ loop:
 				break loop
 			}
 
-			attributes := make(
-				[]*proto.Attribute,
-				0,
-				len(event.attributes),
-			)
-
-			for key, value := range event.attributes {
-				attributes = append(attributes, &proto.Attribute{
-					Key:   strptr(key),
-					Value: strptr(value),
-				})
-			}
-
 			batch = append(batch, &proto.Event{
 				Ttl:          &r.ttl,
 				Host:         &hostname,
 				Time:         &event.time,
 				Service:      &event.service,
 				MetricSint64: &event.metric,
-				Attributes:   attributes,
+				Attributes:   serializeRiemannAttributes(event.attributes),
 			})
 
 			if len(batch) < batchSize {
@@ -302,13 +255,19 @@ func (r *RiemannReporter) read() error {
 }
 
 //
-// Serialization Helpers
+// Helpers
 
-func strptr(val string) *string { return &val }
-func boolptr(val bool) *bool    { return &val }
+func serializeRiemannAttributes(eventAttributes map[string]string) []*proto.Attribute {
+	attributes := make([]*proto.Attribute, 0, len(eventAttributes))
+	for key, value := range eventAttributes {
+		attributes = append(attributes, &proto.Attribute{
+			Key:   stringptr(key),
+			Value: stringptr(value),
+		})
+	}
 
-//
-// IO Helpers
+	return attributes
+}
 
 func readPrefixedMessage(r io.Reader) ([]byte, error) {
 	var header uint32

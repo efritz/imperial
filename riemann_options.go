@@ -1,12 +1,41 @@
 package imperial
 
 import (
+	"io"
+	"net"
 	"time"
 
 	"github.com/efritz/glock"
 )
 
-type RiemannConfigFunc func(r *riemannConfig)
+type (
+	riemannConfig struct {
+		logger            Logger
+		clock             glock.Clock
+		dialer            RiemannDialer
+		configs           []ConfigFunc
+		ttl               float32
+		batchSize         int
+		queueSize         int
+		tickDuration      time.Duration
+		connectionTimeout time.Duration
+	}
+
+	RiemannConfigFunc func(r *riemannConfig)
+)
+
+func newRiemannConfig() *riemannConfig {
+	return &riemannConfig{
+		logger:            NewNilLogger(),
+		clock:             glock.NewRealClock(),
+		configs:           []ConfigFunc{},
+		ttl:               60,
+		batchSize:         5000,
+		queueSize:         360,
+		tickDuration:      time.Second * 5,
+		connectionTimeout: time.Second * 5,
+	}
+}
 
 func WithRiemannReportConfigs(configs ...ConfigFunc) RiemannConfigFunc {
 	return func(r *riemannConfig) { r.configs = append(r.configs, configs...) }
@@ -42,4 +71,21 @@ func WithRiemannClock(clock glock.Clock) RiemannConfigFunc {
 
 func WithRiemannDialer(dialer RiemannDialer) RiemannConfigFunc {
 	return func(r *riemannConfig) { r.dialer = dialer }
+}
+
+//
+//
+
+func makeDialer(addr string, config *riemannConfig) RiemannDialer {
+	if config.dialer != nil {
+		return config.dialer
+	}
+
+	return func() (io.ReadWriteCloser, error) {
+		return net.DialTimeout(
+			"tcp",
+			addr,
+			config.connectionTimeout,
+		)
+	}
 }
