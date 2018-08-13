@@ -107,13 +107,15 @@ func (r *Reporter) ensurePublisher(namespace string) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	if _, ok := r.namespaces[namespace]; !ok {
-		ch := make(chan *cloudwatch.MetricDatum, r.bufferSize)
-		r.namespaces[namespace] = ch
-
-		r.wg.Add(1)
-		go r.publish(namespace, ch)
+	if _, ok := r.namespaces[namespace]; ok {
+		return
 	}
+
+	ch := make(chan *cloudwatch.MetricDatum, r.bufferSize)
+	r.namespaces[namespace] = ch
+
+	r.wg.Add(1)
+	go r.publish(namespace, ch)
 }
 
 func (r *Reporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
