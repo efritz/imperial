@@ -75,20 +75,20 @@ func (s *RiemannSuite) TestMultipleBatches(t sweet.T) {
 		clock.Advance(time.Second)
 		t1 := clock.Now().Unix()
 
-		reporter.Report("a", 10*i+1)
-		reporter.Report("b", 10*i+2)
-		reporter.Report("c", 10*i+3)
-		reporter.Report("d", 10*i+4)
-		reporter.Report("e", 10*i+5)
+		reporter.Report("a", float64(10*i+1))
+		reporter.Report("b", float64(10*i+2))
+		reporter.Report("c", float64(10*i+3))
+		reporter.Report("d", float64(10*i+4))
+		reporter.Report("e", float64(10*i+5))
 
 		Eventually(func() ([]*event, error) {
 			return deserializeBatch(w.Bytes())
 		}).Should(ConsistOf(
-			&event{"a", 10*int64(i) + 1, t1, map[string]string{}},
-			&event{"b", 10*int64(i) + 2, t1, map[string]string{}},
-			&event{"c", 10*int64(i) + 3, t1, map[string]string{}},
-			&event{"d", 10*int64(i) + 4, t1, map[string]string{}},
-			&event{"e", 10*int64(i) + 5, t1, map[string]string{}},
+			&event{"a", float64(10*int64(i) + 1), t1, map[string]string{}},
+			&event{"b", float64(10*int64(i) + 2), t1, map[string]string{}},
+			&event{"c", float64(10*int64(i) + 3), t1, map[string]string{}},
+			&event{"d", float64(10*int64(i) + 4), t1, map[string]string{}},
+			&event{"e", float64(10*int64(i) + 5), t1, map[string]string{}},
 		))
 	}
 
@@ -103,7 +103,7 @@ func (s *RiemannSuite) TestPartialBatchTick(t sweet.T) {
 
 	for i := 0; i < 3; i++ {
 		w.Reset()
-		reporter.Report("a", 10*i+1)
+		reporter.Report("a", float64(10*i+1))
 		Consistently(w.Bytes).Should(BeEmpty())
 
 		t1 := clock.Now().Unix()
@@ -112,7 +112,7 @@ func (s *RiemannSuite) TestPartialBatchTick(t sweet.T) {
 		Eventually(func() ([]*event, error) {
 			return deserializeBatch(w.Bytes())
 		}).Should(ConsistOf(
-			&event{"a", 10*int64(i) + 1, t1, map[string]string{}},
+			&event{"a", float64(10*int64(i) + 1), t1, map[string]string{}},
 		))
 	}
 }
@@ -145,7 +145,7 @@ func (s *RiemannSuite) TestFullBuffer(t sweet.T) {
 			<-time.After(time.Millisecond * 50)
 		}
 
-		reporter.Report("a", i)
+		reporter.Report("a", float64(i))
 	}
 
 	Eventually(func() (int, error) {
@@ -181,7 +181,7 @@ func (s *RiemannSuite) TestReconnect(t sweet.T) {
 	)
 
 	for i := 0; i < 30; i++ {
-		reporter.Report("a", i)
+		reporter.Report("a", float64(i))
 	}
 
 	Eventually(func() ([]*event, error) {
@@ -368,7 +368,7 @@ func eventsFromReader(r io.Reader) ([]*event, error) {
 
 		events = append(events, &event{
 			service:    ev.GetService(),
-			metric:     ev.GetMetricSint64(),
+			metric:     ev.GetMetricD(),
 			time:       ev.GetTime(),
 			attributes: attributes,
 		})

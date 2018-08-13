@@ -6,4 +6,3 @@ services:
       - 5555:5555
     volumes:
       - ./etc:/app/etc
-    #   - ./tmp:/app/log

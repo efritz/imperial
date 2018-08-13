@@ -12,21 +12,21 @@ import (
 	"github.com/efritz/imperial/base"
 )
 
-type (
-	Reporter struct {
-		logger       base.Logger
-		clock        glock.Clock
-		configs      []base.ConfigFunc
-		api          cloudwatchiface.CloudWatchAPI
-		batchSize    int
-		bufferSize   int
-		tickDuration time.Duration
-		namespaces   map[string]chan *cloudwatch.MetricDatum
-		mutex        *sync.RWMutex
-		once         *sync.Once
-		wg           *sync.WaitGroup
-	}
-)
+type Reporter struct {
+	logger       base.Logger
+	clock        glock.Clock
+	configs      []base.ConfigFunc
+	api          cloudwatchiface.CloudWatchAPI
+	batchSize    int
+	bufferSize   int
+	tickDuration time.Duration
+	namespaces   map[string]chan *cloudwatch.MetricDatum
+	mutex        *sync.RWMutex
+	once         *sync.Once
+	wg           *sync.WaitGroup
+}
+
+var _ base.SimpleReporter = &Reporter{}
 
 func NewReporter(namespace string, configs ...ConfigFunc) *Reporter {
 	config := newConfig(namespace)
@@ -49,31 +49,31 @@ func NewReporter(namespace string, configs ...ConfigFunc) *Reporter {
 	}
 }
 
-func (c *Reporter) Report(name string, value int, configs ...base.ConfigFunc) {
+func (r *Reporter) Report(name string, value float64, configs ...base.ConfigFunc) {
 	var (
-		options   = base.ApplyConfigs(c.configs, configs)
+		options   = base.ApplyConfigs(r.configs, configs)
 		namespace = options.Namespace
 		datum     = &cloudwatch.MetricDatum{
 			MetricName: aws.String(name),
-			Timestamp:  aws.Time(c.clock.Now()),
-			Value:      aws.Float64(float64(value)),
+			Timestamp:  aws.Time(r.clock.Now()),
+			Value:      aws.Float64(value),
 			Unit:       aws.String(string(options.Unit)),
 			Dimensions: serializeDimensions(options.Attributes),
 		}
 	)
 
-	c.ensurePublisher(namespace)
+	r.ensurePublisher(namespace)
 
 	for {
 		select {
-		case c.namespaces[namespace] <- datum:
+		case r.namespaces[namespace] <- datum:
 			return
 		default:
 		}
 
 		select {
-		case <-c.namespaces[namespace]:
-			c.logger.Printf(
+		case <-r.namespaces[namespace]:
+			r.logger.Printf(
 				"Cloudwatch buffer for namespace %s full, dropping oldest datum",
 				namespace,
 			)
@@ -83,45 +83,45 @@ func (c *Reporter) Report(name string, value int, configs ...base.ConfigFunc) {
 	}
 }
 
-func (c *Reporter) Shutdown() {
-	c.once.Do(func() {
-		c.mutex.Lock()
-		defer c.mutex.Unlock()
+func (r *Reporter) Shutdown() {
+	r.once.Do(func() {
+		r.mutex.Lock()
+		defer r.mutex.Unlock()
 
-		for _, ch := range c.namespaces {
+		for _, ch := range r.namespaces {
 			close(ch)
 		}
 	})
 
-	c.wg.Wait()
+	r.wg.Wait()
 }
 
-func (c *Reporter) ensurePublisher(namespace string) {
-	c.mutex.RLock()
-	if _, ok := c.namespaces[namespace]; ok {
-		c.mutex.RUnlock()
+func (r *Reporter) ensurePublisher(namespace string) {
+	r.mutex.RLock()
+	if _, ok := r.namespaces[namespace]; ok {
+		r.mutex.RUnlock()
 		return
 	}
 
-	c.mutex.RUnlock()
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
+	r.mutex.RUnlock()
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
-	if _, ok := c.namespaces[namespace]; !ok {
-		ch := make(chan *cloudwatch.MetricDatum, c.bufferSize)
-		c.namespaces[namespace] = ch
+	if _, ok := r.namespaces[namespace]; !ok {
+		ch := make(chan *cloudwatch.MetricDatum, r.bufferSize)
+		r.namespaces[namespace] = ch
 
-		c.wg.Add(1)
-		go c.publish(namespace, ch)
+		r.wg.Add(1)
+		go r.publish(namespace, ch)
 	}
 }
 
-func (c *Reporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
-	defer c.wg.Done()
+func (r *Reporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) {
+	defer r.wg.Done()
 
 	var (
-		ticker = c.clock.NewTicker(c.tickDuration)
 		data   = []*cloudwatch.MetricDatum{}
+		ticker = r.clock.NewTicker(r.tickDuration)
 	)
 
 	putMetricData := func() {
@@ -134,8 +134,8 @@ func (c *Reporter) publish(namespace string, ch <-chan *cloudwatch.MetricDatum) 
 			MetricData: data,
 		}
 
-		if _, err := c.api.PutMetricData(input); err != nil {
-			c.logger.Printf(
+		if _, err := r.api.PutMetricData(input); err != nil {
+			r.logger.Printf(
 				"Failed to publish data for to Cloudwatch namespace %s (%s)",
 				namespace,
 				err.Error(),
@@ -155,7 +155,7 @@ loop:
 
 			data = append(data, datum)
 
-			if len(data) < c.batchSize {
+			if len(data) < r.batchSize {
 				continue
 			}
 

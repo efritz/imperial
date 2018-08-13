@@ -90,13 +90,13 @@ func (s *CloudwatchSuite) TestReportMultipleNamespaces(t sweet.T) {
 	)
 
 	for i := 0; i < 5; i++ {
-		reporter.Report("a", i, base.WithNamespace("foo"))
-		reporter.Report("b", i, base.WithNamespace("bar"))
-		reporter.Report("c", i, base.WithNamespace("baz"))
+		reporter.Report("a", float64(i), base.WithNamespace("foo"))
+		reporter.Report("b", float64(i), base.WithNamespace("bar"))
+		reporter.Report("c", float64(i), base.WithNamespace("baz"))
 
 		if i%2 == 0 {
 			// Will not trigger a batch to send
-			reporter.Report("d", i, base.WithNamespace("bonk"))
+			reporter.Report("d", float64(i), base.WithNamespace("bonk"))
 		}
 	}
 
@@ -115,11 +115,11 @@ func (s *CloudwatchSuite) TestMultipleBatches(t sweet.T) {
 	reporter, api, _ := makeReporter()
 
 	for i := 0; i < 3; i++ {
-		reporter.Report("a", 10*i+1)
-		reporter.Report("b", 10*i+2)
-		reporter.Report("c", 10*i+3)
-		reporter.Report("d", 10*i+4)
-		reporter.Report("e", 10*i+5)
+		reporter.Report("a", float64(10*i+1))
+		reporter.Report("b", float64(10*i+2))
+		reporter.Report("c", float64(10*i+3))
+		reporter.Report("d", float64(10*i+4))
+		reporter.Report("e", float64(10*i+5))
 
 		// Wait until publish
 		Eventually(api.PutMetricDataFuncCallCount).Should(Equal(i + 1))
@@ -143,7 +143,7 @@ func (s *CloudwatchSuite) TestPartialBatchTick(t sweet.T) {
 	reporter, api, clock := makeReporter()
 
 	for i := 0; i < 3; i++ {
-		reporter.Report("a", 10*i+1)
+		reporter.Report("a", float64(10*i+1))
 		Consistently(api.PutMetricDataFuncCallCount).Should(Equal(i))
 		clock.Advance(time.Second * 5)
 
@@ -178,7 +178,7 @@ func (s *CloudwatchSuite) TestFullBuffer(t sweet.T) {
 			<-time.After(time.Millisecond * 50)
 		}
 
-		reporter.Report("a", i)
+		reporter.Report("a", float64(i))
 	}
 
 	// Wait until publish

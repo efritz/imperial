@@ -38,11 +38,13 @@ type (
 
 	event struct {
 		service    string
-		metric     int64
+		metric     float64
 		time       int64
 		attributes map[string]string
 	}
 )
+
+var _ base.SimpleReporter = &Reporter{}
 
 func NewReporter(addr string, configs ...ConfigFunc) *Reporter {
 	config := newConfig()
@@ -72,12 +74,12 @@ func NewReporter(addr string, configs ...ConfigFunc) *Reporter {
 	return reporter
 }
 
-func (r *Reporter) Report(name string, value int, configs ...base.ConfigFunc) {
+func (r *Reporter) Report(name string, value float64, configs ...base.ConfigFunc) {
 	options := base.ApplyConfigs(r.configs, configs)
 
 	r.events <- &event{
 		service:    name,
-		metric:     int64(value),
+		metric:     value,
 		time:       r.clock.Now().Unix(),
 		attributes: options.Attributes,
 	}
@@ -127,12 +129,12 @@ loop:
 			}
 
 			batch = append(batch, &proto.Event{
-				Ttl:          &r.ttl,
-				Host:         &hostname,
-				Time:         &event.time,
-				Service:      &event.service,
-				MetricSint64: &event.metric,
-				Attributes:   serializeAttributes(event.attributes),
+				Ttl:        &r.ttl,
+				Host:       &hostname,
+				Time:       &event.time,
+				Service:    &event.service,
+				MetricD:    &event.metric,
+				Attributes: serializeAttributes(event.attributes),
 			})
 
 			if len(batch) < batchSize {
