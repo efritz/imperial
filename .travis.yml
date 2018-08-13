@@ -3,8 +3,6 @@ env:
     - CC_TEST_REPORTER_ID=55e9f9338f5eaef04afca6d706c7c558cef00930a266363b59bb7dd9e2c67e99
 language: go
 go:
-  - 1.9.x
-  - 1.10.x
   - tip
 before_script:
   - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
