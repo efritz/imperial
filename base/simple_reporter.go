@@ -4,6 +4,8 @@ import (
 	"math"
 	"sync"
 	"sync/atomic"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type (
@@ -38,18 +40,21 @@ func (r *SimpleReporterShim) AddCounter(name string, value float64, configs ...C
 		panic("counter cannot decrease in value")
 	}
 
-	r.ensureValue(r.counters, name)
-	r.reporter.Report(name, r.counters[name].Add(value), configs...)
+	key := makeKey(name, configs)
+	r.ensureValue(r.counters, key)
+	r.reporter.Report(name, r.counters[key].Add(value), configs...)
 }
 
 func (r *SimpleReporterShim) AddGauge(name string, value float64, configs ...ConfigFunc) {
-	r.ensureValue(r.gauges, name)
-	r.reporter.Report(name, r.gauges[name].Add(value), configs...)
+	key := makeKey(name, configs)
+	r.ensureValue(r.gauges, key)
+	r.reporter.Report(name, r.gauges[key].Add(value), configs...)
 }
 
 func (r *SimpleReporterShim) SetGauge(name string, value float64, configs ...ConfigFunc) {
-	r.ensureValue(r.gauges, name)
-	r.reporter.Report(name, r.gauges[name].Set(value), configs...)
+	key := makeKey(name, configs)
+	r.ensureValue(r.gauges, key)
+	r.reporter.Report(name, r.gauges[key].Set(value), configs...)
 }
 
 func (r *SimpleReporterShim) ObserveHistogram(name string, value float64, configs ...ConfigFunc) {
@@ -63,6 +68,9 @@ func (r *SimpleReporterShim) ObserveSummary(name string, value float64, configs 
 func (r *SimpleReporterShim) Shutdown() {
 	r.reporter.Shutdown()
 }
+
+//
+//
 
 func (r *SimpleReporterShim) ensureValue(m map[string]*value, name string) {
 	r.mutex.RLock()
@@ -110,4 +118,17 @@ func (v *value) Set(value float64) float64 {
 			return value
 		}
 	}
+}
+
+//
+//
+
+func makeKey(name string, configs []ConfigFunc) string {
+	config := ApplyConfigs(configs, nil)
+
+	return prometheus.BuildFQName(
+		config.Namespace,
+		config.Subsystem,
+		name,
+	)
 }
