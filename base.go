@@ -3,8 +3,9 @@ package imperial
 import "github.com/efritz/imperial/base"
 
 type (
-	Reporter = base.Reporter
-	Logger   = base.Logger
+	Reporter     = base.Reporter
+	Logger       = base.Logger
+	ReportConfig = base.ReportConfig
 )
 
 const (
