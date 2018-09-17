@@ -67,6 +67,7 @@ func (r *Reporter) AddCounter(name string, value float64, configs ...base.Config
 	counter, err := r.ensureCounter(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
 		r.logger.Printf("Error registering counter (%s)", err.Error())
+		return
 	}
 
 	counter.Add(value)
@@ -76,6 +77,7 @@ func (r *Reporter) AddGauge(name string, value float64, configs ...base.ConfigFu
 	gauge, err := r.ensureGauge(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
 		r.logger.Printf("Error registering gauge (%s)", err.Error())
+		return
 	}
 
 	gauge.Add(value)
@@ -85,6 +87,7 @@ func (r *Reporter) SetGauge(name string, value float64, configs ...base.ConfigFu
 	gauge, err := r.ensureGauge(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
 		r.logger.Printf("Error registering gauge (%s)", err.Error())
+		return
 	}
 
 	gauge.Set(value)
@@ -94,6 +97,7 @@ func (r *Reporter) ObserveHistogram(name string, value float64, configs ...base.
 	histogram, err := r.ensureHistogram(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
 		r.logger.Printf("Error registering histogram (%s)", err.Error())
+		return
 	}
 
 	histogram.Observe(value)
@@ -103,6 +107,7 @@ func (r *Reporter) ObserveSummary(name string, value float64, configs ...base.Co
 	summary, err := r.ensureSummary(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
 		r.logger.Printf("Error registering summary (%s)", err.Error())
+		return
 	}
 
 	summary.Observe(value)

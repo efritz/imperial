@@ -114,9 +114,9 @@ func (r *Reporter) batch(batchSize int, tickDuration time.Duration) {
 				"Failed to serialize Riemann message (%s)",
 				err.Error(),
 			)
+		} else {
+			r.sendToPublisher(serialized)
 		}
-
-		r.sendToPublisher(serialized)
 		batch = batch[:0]
 	}
 
