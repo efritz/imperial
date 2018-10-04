@@ -10,19 +10,27 @@ import (
 )
 
 type MockReporter struct {
-	AddCounterFunc       func(string, float64, ...base.ConfigFunc)
-	histAddCounter       []ReporterAddCounterParamSet
-	AddGaugeFunc         func(string, float64, ...base.ConfigFunc)
-	histAddGauge         []ReporterAddGaugeParamSet
-	ObserveHistogramFunc func(string, float64, ...base.ConfigFunc)
-	histObserveHistogram []ReporterObserveHistogramParamSet
-	ObserveSummaryFunc   func(string, float64, ...base.ConfigFunc)
-	histObserveSummary   []ReporterObserveSummaryParamSet
-	SetGaugeFunc         func(string, float64, ...base.ConfigFunc)
-	histSetGauge         []ReporterSetGaugeParamSet
-	ShutdownFunc         func()
-	histShutdown         []ReporterShutdownParamSet
-	mutex                sync.RWMutex
+	AddCounterFunc        func(string, float64, ...base.ConfigFunc)
+	histAddCounter        []ReporterAddCounterParamSet
+	AddGaugeFunc          func(string, float64, ...base.ConfigFunc)
+	histAddGauge          []ReporterAddGaugeParamSet
+	ObserveHistogramFunc  func(string, float64, ...base.ConfigFunc)
+	histObserveHistogram  []ReporterObserveHistogramParamSet
+	ObserveSummaryFunc    func(string, float64, ...base.ConfigFunc)
+	histObserveSummary    []ReporterObserveSummaryParamSet
+	RegisterCounterFunc   func(string, ...base.ConfigFunc)
+	histRegisterCounter   []ReporterRegisterCounterParamSet
+	RegisterGaugeFunc     func(string, ...base.ConfigFunc)
+	histRegisterGauge     []ReporterRegisterGaugeParamSet
+	RegisterHistogramFunc func(string, ...base.ConfigFunc)
+	histRegisterHistogram []ReporterRegisterHistogramParamSet
+	RegisterSummaryFunc   func(string, ...base.ConfigFunc)
+	histRegisterSummary   []ReporterRegisterSummaryParamSet
+	SetGaugeFunc          func(string, float64, ...base.ConfigFunc)
+	histSetGauge          []ReporterSetGaugeParamSet
+	ShutdownFunc          func()
+	histShutdown          []ReporterShutdownParamSet
+	mutex                 sync.RWMutex
 }
 type ReporterAddCounterParamSet struct {
 	Arg0 string
@@ -44,6 +52,22 @@ type ReporterObserveSummaryParamSet struct {
 	Arg1 float64
 	Arg2 []base.ConfigFunc
 }
+type ReporterRegisterCounterParamSet struct {
+	Arg0 string
+	Arg1 []base.ConfigFunc
+}
+type ReporterRegisterGaugeParamSet struct {
+	Arg0 string
+	Arg1 []base.ConfigFunc
+}
+type ReporterRegisterHistogramParamSet struct {
+	Arg0 string
+	Arg1 []base.ConfigFunc
+}
+type ReporterRegisterSummaryParamSet struct {
+	Arg0 string
+	Arg1 []base.ConfigFunc
+}
 type ReporterSetGaugeParamSet struct {
 	Arg0 string
 	Arg1 float64
@@ -57,6 +81,10 @@ func NewMockReporter() *MockReporter {
 	m.AddGaugeFunc = m.defaultAddGaugeFunc
 	m.ObserveHistogramFunc = m.defaultObserveHistogramFunc
 	m.ObserveSummaryFunc = m.defaultObserveSummaryFunc
+	m.RegisterCounterFunc = m.defaultRegisterCounterFunc
+	m.RegisterGaugeFunc = m.defaultRegisterGaugeFunc
+	m.RegisterHistogramFunc = m.defaultRegisterHistogramFunc
+	m.RegisterSummaryFunc = m.defaultRegisterSummaryFunc
 	m.SetGaugeFunc = m.defaultSetGaugeFunc
 	m.ShutdownFunc = m.defaultShutdownFunc
 	return m
@@ -129,6 +157,74 @@ func (m *MockReporter) ObserveSummaryFuncCallParams() []ReporterObserveSummaryPa
 	return m.histObserveSummary
 }
 
+func (m *MockReporter) RegisterCounter(v0 string, v1 ...base.ConfigFunc) {
+	m.mutex.Lock()
+	m.histRegisterCounter = append(m.histRegisterCounter, ReporterRegisterCounterParamSet{v0, v1})
+	m.mutex.Unlock()
+	m.RegisterCounterFunc(v0, v1...)
+}
+func (m *MockReporter) RegisterCounterFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histRegisterCounter)
+}
+func (m *MockReporter) RegisterCounterFuncCallParams() []ReporterRegisterCounterParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histRegisterCounter
+}
+
+func (m *MockReporter) RegisterGauge(v0 string, v1 ...base.ConfigFunc) {
+	m.mutex.Lock()
+	m.histRegisterGauge = append(m.histRegisterGauge, ReporterRegisterGaugeParamSet{v0, v1})
+	m.mutex.Unlock()
+	m.RegisterGaugeFunc(v0, v1...)
+}
+func (m *MockReporter) RegisterGaugeFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histRegisterGauge)
+}
+func (m *MockReporter) RegisterGaugeFuncCallParams() []ReporterRegisterGaugeParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histRegisterGauge
+}
+
+func (m *MockReporter) RegisterHistogram(v0 string, v1 ...base.ConfigFunc) {
+	m.mutex.Lock()
+	m.histRegisterHistogram = append(m.histRegisterHistogram, ReporterRegisterHistogramParamSet{v0, v1})
+	m.mutex.Unlock()
+	m.RegisterHistogramFunc(v0, v1...)
+}
+func (m *MockReporter) RegisterHistogramFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histRegisterHistogram)
+}
+func (m *MockReporter) RegisterHistogramFuncCallParams() []ReporterRegisterHistogramParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histRegisterHistogram
+}
+
+func (m *MockReporter) RegisterSummary(v0 string, v1 ...base.ConfigFunc) {
+	m.mutex.Lock()
+	m.histRegisterSummary = append(m.histRegisterSummary, ReporterRegisterSummaryParamSet{v0, v1})
+	m.mutex.Unlock()
+	m.RegisterSummaryFunc(v0, v1...)
+}
+func (m *MockReporter) RegisterSummaryFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histRegisterSummary)
+}
+func (m *MockReporter) RegisterSummaryFuncCallParams() []ReporterRegisterSummaryParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histRegisterSummary
+}
+
 func (m *MockReporter) SetGauge(v0 string, v1 float64, v2 ...base.ConfigFunc) {
 	m.mutex.Lock()
 	m.histSetGauge = append(m.histSetGauge, ReporterSetGaugeParamSet{v0, v1, v2})
@@ -173,6 +269,18 @@ func (m *MockReporter) defaultObserveHistogramFunc(v0 string, v1 float64, v2 ...
 	return
 }
 func (m *MockReporter) defaultObserveSummaryFunc(v0 string, v1 float64, v2 ...base.ConfigFunc) {
+	return
+}
+func (m *MockReporter) defaultRegisterCounterFunc(v0 string, v1 ...base.ConfigFunc) {
+	return
+}
+func (m *MockReporter) defaultRegisterGaugeFunc(v0 string, v1 ...base.ConfigFunc) {
+	return
+}
+func (m *MockReporter) defaultRegisterHistogramFunc(v0 string, v1 ...base.ConfigFunc) {
+	return
+}
+func (m *MockReporter) defaultRegisterSummaryFunc(v0 string, v1 ...base.ConfigFunc) {
 	return
 }
 func (m *MockReporter) defaultSetGaugeFunc(v0 string, v1 float64, v2 ...base.ConfigFunc) {

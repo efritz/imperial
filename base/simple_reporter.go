@@ -35,6 +35,11 @@ func NewSimpleReporterShim(reporter SimpleReporter) *SimpleReporterShim {
 	}
 }
 
+func (r *SimpleReporterShim) RegisterCounter(name string, configs ...ConfigFunc)   {}
+func (r *SimpleReporterShim) RegisterGauge(name string, configs ...ConfigFunc)     {}
+func (r *SimpleReporterShim) RegisterHistogram(name string, configs ...ConfigFunc) {}
+func (r *SimpleReporterShim) RegisterSummary(name string, configs ...ConfigFunc)   {}
+
 func (r *SimpleReporterShim) AddCounter(name string, value float64, configs ...ConfigFunc) {
 	if value < 0 {
 		panic("counter cannot decrease in value")

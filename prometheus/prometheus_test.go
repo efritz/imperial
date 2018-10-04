@@ -13,6 +13,42 @@ import (
 
 type PrometheusSuite struct{}
 
+func (s *PrometheusSuite) TestRegisterCounter(t sweet.T) {
+	reporter, registry := makeReporter()
+	reporter.RegisterCounter("foo")
+	Expect(registry.RegisterFuncCallCount()).To(Equal(1))
+
+	counter1 := registry.RegisterFuncCallParams()[0].Arg0
+	assertDesc(counter1, nil, `fqName: "foo"`)
+}
+
+func (s *PrometheusSuite) TestRegisterGauge(t sweet.T) {
+	reporter, registry := makeReporter()
+	reporter.RegisterGauge("foo")
+	Expect(registry.RegisterFuncCallCount()).To(Equal(1))
+
+	counter1 := registry.RegisterFuncCallParams()[0].Arg0
+	assertDesc(counter1, nil, `fqName: "foo"`)
+}
+
+func (s *PrometheusSuite) TestRegisterHistogram(t sweet.T) {
+	reporter, registry := makeReporter()
+	reporter.RegisterHistogram("foo")
+	Expect(registry.RegisterFuncCallCount()).To(Equal(1))
+
+	counter1 := registry.RegisterFuncCallParams()[0].Arg0
+	assertDesc(counter1, nil, `fqName: "foo"`)
+}
+
+func (s *PrometheusSuite) TestRegisterSummary(t sweet.T) {
+	reporter, registry := makeReporter()
+	reporter.RegisterSummary("foo")
+	Expect(registry.RegisterFuncCallCount()).To(Equal(1))
+
+	counter1 := registry.RegisterFuncCallParams()[0].Arg0
+	assertDesc(counter1, nil, `fqName: "foo"`)
+}
+
 func (s *PrometheusSuite) TestAddCounter(t sweet.T) {
 	reporter, registry := makeReporter(WithReportConfigs(
 		base.WithNamespace("ns"),
@@ -459,9 +495,9 @@ func (s *PrometheusSuite) TestObserveSummaryWithCustomQuantiles(t sweet.T) {
 
 	for _, x := range []float64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16} {
 		reporter.ObserveSummary("foo", x, base.WithQuantiles(map[float64]float64{
-			0.25:  0.01,
-			0.50:  0.01,
-			0.75:  0.01,
+			0.25: 0.01,
+			0.50: 0.01,
+			0.75: 0.01,
 		}))
 	}
 

@@ -63,6 +63,30 @@ func (r *Reporter) Handler() http.Handler {
 	})
 }
 
+func (r *Reporter) RegisterCounter(name string, configs ...base.ConfigFunc) {
+	if _, err := r.ensureCounter(name, base.ApplyConfigs(r.configs, configs)); err != nil {
+		r.logger.Printf("Error registering counter (%s)", err.Error())
+	}
+}
+
+func (r *Reporter) RegisterGauge(name string, configs ...base.ConfigFunc) {
+	if _, err := r.ensureGauge(name, base.ApplyConfigs(r.configs, configs)); err != nil {
+		r.logger.Printf("Error registering gauge (%s)", err.Error())
+	}
+}
+
+func (r *Reporter) RegisterHistogram(name string, configs ...base.ConfigFunc) {
+	if _, err := r.ensureHistogram(name, base.ApplyConfigs(r.configs, configs)); err != nil {
+		r.logger.Printf("Error registering histogram (%s)", err.Error())
+	}
+}
+
+func (r *Reporter) RegisterSummary(name string, configs ...base.ConfigFunc) {
+	if _, err := r.ensureSummary(name, base.ApplyConfigs(r.configs, configs)); err != nil {
+		r.logger.Printf("Error registering summary (%s)", err.Error())
+	}
+}
+
 func (r *Reporter) AddCounter(name string, value float64, configs ...base.ConfigFunc) {
 	counter, err := r.ensureCounter(name, base.ApplyConfigs(r.configs, configs))
 	if err != nil {
