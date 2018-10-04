@@ -80,6 +80,12 @@ type MockCloudWatchAPI struct {
 	histGetMetricStatisticsRequest           []CloudWatchAPIGetMetricStatisticsRequestParamSet
 	GetMetricStatisticsWithContextFunc       func(aws.Context, *cloudwatch.GetMetricStatisticsInput, ...request.Option) (*cloudwatch.GetMetricStatisticsOutput, error)
 	histGetMetricStatisticsWithContext       []CloudWatchAPIGetMetricStatisticsWithContextParamSet
+	GetMetricWidgetImageFunc                 func(*cloudwatch.GetMetricWidgetImageInput) (*cloudwatch.GetMetricWidgetImageOutput, error)
+	histGetMetricWidgetImage                 []CloudWatchAPIGetMetricWidgetImageParamSet
+	GetMetricWidgetImageRequestFunc          func(*cloudwatch.GetMetricWidgetImageInput) (*request.Request, *cloudwatch.GetMetricWidgetImageOutput)
+	histGetMetricWidgetImageRequest          []CloudWatchAPIGetMetricWidgetImageRequestParamSet
+	GetMetricWidgetImageWithContextFunc      func(aws.Context, *cloudwatch.GetMetricWidgetImageInput, ...request.Option) (*cloudwatch.GetMetricWidgetImageOutput, error)
+	histGetMetricWidgetImageWithContext      []CloudWatchAPIGetMetricWidgetImageWithContextParamSet
 	ListDashboardsFunc                       func(*cloudwatch.ListDashboardsInput) (*cloudwatch.ListDashboardsOutput, error)
 	histListDashboards                       []CloudWatchAPIListDashboardsParamSet
 	ListDashboardsRequestFunc                func(*cloudwatch.ListDashboardsInput) (*request.Request, *cloudwatch.ListDashboardsOutput)
@@ -256,6 +262,17 @@ type CloudWatchAPIGetMetricStatisticsWithContextParamSet struct {
 	Arg1 *cloudwatch.GetMetricStatisticsInput
 	Arg2 []request.Option
 }
+type CloudWatchAPIGetMetricWidgetImageParamSet struct {
+	Arg0 *cloudwatch.GetMetricWidgetImageInput
+}
+type CloudWatchAPIGetMetricWidgetImageRequestParamSet struct {
+	Arg0 *cloudwatch.GetMetricWidgetImageInput
+}
+type CloudWatchAPIGetMetricWidgetImageWithContextParamSet struct {
+	Arg0 aws.Context
+	Arg1 *cloudwatch.GetMetricWidgetImageInput
+	Arg2 []request.Option
+}
 type CloudWatchAPIListDashboardsParamSet struct {
 	Arg0 *cloudwatch.ListDashboardsInput
 }
@@ -377,6 +394,9 @@ func NewMockCloudWatchAPI() *MockCloudWatchAPI {
 	m.GetMetricStatisticsFunc = m.defaultGetMetricStatisticsFunc
 	m.GetMetricStatisticsRequestFunc = m.defaultGetMetricStatisticsRequestFunc
 	m.GetMetricStatisticsWithContextFunc = m.defaultGetMetricStatisticsWithContextFunc
+	m.GetMetricWidgetImageFunc = m.defaultGetMetricWidgetImageFunc
+	m.GetMetricWidgetImageRequestFunc = m.defaultGetMetricWidgetImageRequestFunc
+	m.GetMetricWidgetImageWithContextFunc = m.defaultGetMetricWidgetImageWithContextFunc
 	m.ListDashboardsFunc = m.defaultListDashboardsFunc
 	m.ListDashboardsRequestFunc = m.defaultListDashboardsRequestFunc
 	m.ListDashboardsWithContextFunc = m.defaultListDashboardsWithContextFunc
@@ -979,6 +999,57 @@ func (m *MockCloudWatchAPI) GetMetricStatisticsWithContextFuncCallParams() []Clo
 	return m.histGetMetricStatisticsWithContext
 }
 
+func (m *MockCloudWatchAPI) GetMetricWidgetImage(v0 *cloudwatch.GetMetricWidgetImageInput) (*cloudwatch.GetMetricWidgetImageOutput, error) {
+	m.mutex.Lock()
+	m.histGetMetricWidgetImage = append(m.histGetMetricWidgetImage, CloudWatchAPIGetMetricWidgetImageParamSet{v0})
+	m.mutex.Unlock()
+	return m.GetMetricWidgetImageFunc(v0)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histGetMetricWidgetImage)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageFuncCallParams() []CloudWatchAPIGetMetricWidgetImageParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histGetMetricWidgetImage
+}
+
+func (m *MockCloudWatchAPI) GetMetricWidgetImageRequest(v0 *cloudwatch.GetMetricWidgetImageInput) (*request.Request, *cloudwatch.GetMetricWidgetImageOutput) {
+	m.mutex.Lock()
+	m.histGetMetricWidgetImageRequest = append(m.histGetMetricWidgetImageRequest, CloudWatchAPIGetMetricWidgetImageRequestParamSet{v0})
+	m.mutex.Unlock()
+	return m.GetMetricWidgetImageRequestFunc(v0)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageRequestFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histGetMetricWidgetImageRequest)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageRequestFuncCallParams() []CloudWatchAPIGetMetricWidgetImageRequestParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histGetMetricWidgetImageRequest
+}
+
+func (m *MockCloudWatchAPI) GetMetricWidgetImageWithContext(v0 aws.Context, v1 *cloudwatch.GetMetricWidgetImageInput, v2 ...request.Option) (*cloudwatch.GetMetricWidgetImageOutput, error) {
+	m.mutex.Lock()
+	m.histGetMetricWidgetImageWithContext = append(m.histGetMetricWidgetImageWithContext, CloudWatchAPIGetMetricWidgetImageWithContextParamSet{v0, v1, v2})
+	m.mutex.Unlock()
+	return m.GetMetricWidgetImageWithContextFunc(v0, v1, v2...)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageWithContextFuncCallCount() int {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return len(m.histGetMetricWidgetImageWithContext)
+}
+func (m *MockCloudWatchAPI) GetMetricWidgetImageWithContextFuncCallParams() []CloudWatchAPIGetMetricWidgetImageWithContextParamSet {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.histGetMetricWidgetImageWithContext
+}
+
 func (m *MockCloudWatchAPI) ListDashboards(v0 *cloudwatch.ListDashboardsInput) (*cloudwatch.ListDashboardsOutput, error) {
 	m.mutex.Lock()
 	m.histListDashboards = append(m.histListDashboards, CloudWatchAPIListDashboardsParamSet{v0})
@@ -1453,6 +1524,15 @@ func (m *MockCloudWatchAPI) defaultGetMetricStatisticsRequestFunc(v0 *cloudwatch
 	return nil, nil
 }
 func (m *MockCloudWatchAPI) defaultGetMetricStatisticsWithContextFunc(v0 aws.Context, v1 *cloudwatch.GetMetricStatisticsInput, v2 ...request.Option) (*cloudwatch.GetMetricStatisticsOutput, error) {
+	return nil, nil
+}
+func (m *MockCloudWatchAPI) defaultGetMetricWidgetImageFunc(v0 *cloudwatch.GetMetricWidgetImageInput) (*cloudwatch.GetMetricWidgetImageOutput, error) {
+	return nil, nil
+}
+func (m *MockCloudWatchAPI) defaultGetMetricWidgetImageRequestFunc(v0 *cloudwatch.GetMetricWidgetImageInput) (*request.Request, *cloudwatch.GetMetricWidgetImageOutput) {
+	return nil, nil
+}
+func (m *MockCloudWatchAPI) defaultGetMetricWidgetImageWithContextFunc(v0 aws.Context, v1 *cloudwatch.GetMetricWidgetImageInput, v2 ...request.Option) (*cloudwatch.GetMetricWidgetImageOutput, error) {
 	return nil, nil
 }
 func (m *MockCloudWatchAPI) defaultListDashboardsFunc(v0 *cloudwatch.ListDashboardsInput) (*cloudwatch.ListDashboardsOutput, error) {
