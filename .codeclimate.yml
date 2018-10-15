@@ -11,3 +11,4 @@ engines:
 exclude_patterns:
   - "proto/"
   - "**/*_test.go"
+  - "**/*_mock.go"
