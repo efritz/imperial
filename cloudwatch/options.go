@@ -28,7 +28,7 @@ type (
 
 func newConfig(namespace string) *config {
 	return &config{
-		logger:       base.NewNilLogger(),
+		logger:       base.NilLogger,
 		clock:        glock.NewRealClock(),
 		configs:      []base.ConfigFunc{base.WithNamespace(namespace)},
 		batchSize:    5000,

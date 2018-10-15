@@ -36,6 +36,7 @@ var (
 	WithExposedAttributes = base.WithExposedAttributes
 	WithBuckets           = base.WithBuckets
 	WithQuantiles         = base.WithQuantiles
+	NilLogger             = base.NilLogger
 	NewPrintLogger        = base.NewPrintLogger
 	NewNilLogger          = base.NewNilLogger
 )

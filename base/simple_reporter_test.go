@@ -1,7 +1,5 @@
 package base
 
-//go:generate go-mockgen github.com/efritz/imperial/base -i SimpleReporter -o mock_simple_reporter.go -f
-
 import (
 	"math"
 

@@ -13,6 +13,9 @@ type (
 	nilLogger   struct{}
 )
 
+// NilLogger is a singleton silent logger.
+var NilLogger = NewNilLogger()
+
 // NewPrintLogger creates a logger that prints to stdout.
 func NewPrintLogger() Logger {
 	return &printLogger{}

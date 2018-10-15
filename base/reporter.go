@@ -1,5 +1,7 @@
 package base
 
+//go:generate go-mockgen -f github.com/efritz/imperial/base -i Reporter
+
 type Reporter interface {
 	RegisterCounter(name string, configs ...ConfigFunc)
 	RegisterGauge(name string, configs ...ConfigFunc)

@@ -22,7 +22,7 @@ type (
 
 func newConfig() *config {
 	return &config{
-		logger:         base.NewNilLogger(),
+		logger:         base.NilLogger,
 		configs:        []base.ConfigFunc{},
 		handlerTimeout: time.Second * 5,
 		registry:       prometheus.NewRegistry(),

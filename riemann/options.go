@@ -28,7 +28,7 @@ type (
 
 func newConfig() *config {
 	return &config{
-		logger:            base.NewNilLogger(),
+		logger:            base.NilLogger,
 		clock:             glock.NewRealClock(),
 		configs:           []base.ConfigFunc{},
 		ttl:               60,

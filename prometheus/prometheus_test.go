@@ -1,7 +1,5 @@
 package prometheus
 
-//go:generate go-mockgen github.com/efritz/imperial/prometheus -i Registry -o mock_registry_test.go -f
-
 import (
 	"github.com/aphistic/sweet"
 	. "github.com/onsi/gomega"
@@ -9,6 +7,7 @@ import (
 	model "github.com/prometheus/client_model/go"
 
 	"github.com/efritz/imperial/base"
+	"github.com/efritz/imperial/prometheus/internal/mocks"
 )
 
 type PrometheusSuite struct{}
@@ -537,9 +536,9 @@ func (s *PrometheusSuite) TestMakeLabels(t sweet.T) {
 //
 // Constructors
 
-func makeReporter(configs ...ConfigFunc) (*Reporter, *MockRegistry) {
+func makeReporter(configs ...ConfigFunc) (*Reporter, *mocks.MockRegistry) {
 	var (
-		registry = NewMockRegistry()
+		registry = mocks.NewMockRegistry()
 		reporter = NewReporter(append(
 			[]ConfigFunc{
 				WithRegistry(registry),

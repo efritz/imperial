@@ -1,7 +1,5 @@
 package cloudwatch
 
-//go:generate go-mockgen github.com/aws/aws-sdk-go/service/cloudwatch/cloudwatchiface -i CloudWatchAPI -o mock_cloudwatch_api_test.go -f
-
 import (
 	"time"
 
@@ -11,6 +9,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/efritz/imperial/base"
+	"github.com/efritz/imperial/cloudwatch/internal/mocks"
 )
 
 type CloudwatchSuite struct{}
@@ -219,9 +218,9 @@ func (s *CloudwatchSuite) TestShutdown(t sweet.T) {
 //
 // Constructors
 
-func makeReporter(configs ...ConfigFunc) (*Reporter, *MockCloudWatchAPI, *glock.MockClock) {
+func makeReporter(configs ...ConfigFunc) (*Reporter, *mocks.MockCloudWatchAPI, *glock.MockClock) {
 	var (
-		api   = NewMockCloudWatchAPI()
+		api   = mocks.NewMockCloudWatchAPI()
 		clock = glock.NewMockClock()
 	)
 
