@@ -3,6 +3,7 @@ package red
 import (
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type HTTPStatusError struct {
@@ -20,7 +21,7 @@ func NewHTTPStatusError(code int, message string, args ...interface{}) *HTTPStat
 func (e *HTTPStatusError) Error() string {
 	return fmt.Sprintf(
 		"http error: code = %s desc = %s",
-		http.StatusText(e.code),
+		strings.Replace(http.StatusText(e.code), " ", "", -1),
 		e.message,
 	)
 }
