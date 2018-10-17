@@ -3,6 +3,7 @@ package red
 import (
 	"fmt"
 
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
@@ -21,7 +22,7 @@ func HTTPErrorInterpreter(err error) (string, bool) {
 }
 
 func GRPCErrorInterpreter(err error) (string, bool) {
-	if st, ok := status.FromError(err); ok {
+	if st, ok := status.FromError(err); ok && st.Code() != codes.OK {
 		return st.Code().String(), true
 	}
 
