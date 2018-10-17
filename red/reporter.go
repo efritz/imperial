@@ -73,7 +73,7 @@ func (r *Reporter) ReportError(prefix string, err error, configs ...base.ConfigF
 	r.reporter.AddCounter(
 		fmt.Sprintf("%s-error", prefix),
 		1,
-		r.durationMetricConfigs(config, configs)...,
+		r.errorMetricConfigs(config, configs)...,
 	)
 }
 
