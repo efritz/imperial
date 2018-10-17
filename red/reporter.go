@@ -29,20 +29,20 @@ func NewReporter(reporter base.Reporter, configs ...ConfigFunc) *Reporter {
 
 func (r *Reporter) Register() {
 	for prefix, config := range r.prefixConfigs {
-		r.reporter.RegisterCounter(prefix, r.attemptMetricConfigs(config)...)
+		r.reporter.RegisterCounter(prefix, r.requestMetricConfigs(config)...)
 		r.reporter.RegisterCounter(fmt.Sprintf("%s-error", prefix), r.errorMetricConfigs(config)...)
 		r.reporter.RegisterHistogram(fmt.Sprintf("%s-duration", prefix), r.durationMetricConfigs(config)...)
 	}
 }
 
-func (r *Reporter) ReportAttempt(prefix string) {
+func (r *Reporter) ReportRequest(prefix string) {
 	config, ok := r.prefixConfigs[prefix]
 	if !ok {
 		r.logger.Printf("No configuration registered for prefix '%s'", prefix)
 		return
 	}
 
-	r.reporter.AddCounter(prefix, 1, r.attemptMetricConfigs(config)...)
+	r.reporter.AddCounter(fmt.Sprintf("%s-request",prefix), 1, r.requestMetricConfigs(config)...)
 }
 
 func (r *Reporter) ReportError(prefix string, err error) {
@@ -86,7 +86,7 @@ func (r *Reporter) ReportDuration(prefix string, duration float64) {
 //
 //
 
-func (r *Reporter) attemptMetricConfigs(config *PrefixConfig) []base.ConfigFunc {
+func (r *Reporter) requestMetricConfigs(config *PrefixConfig) []base.ConfigFunc {
 	return []base.ConfigFunc{
 		base.WithHelp(""), // TODO
 	}

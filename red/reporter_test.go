@@ -36,20 +36,20 @@ func (s *ReporterSuite) TestRegister(t sweet.T) {
 	Expect(histogramNames).To(ConsistOf("foo-duration", "bar-duration", "baz-duration"))
 }
 
-func (s *ReporterSuite) TestReportAttempt(t sweet.T) {
+func (s *ReporterSuite) TestReportRequest(t sweet.T) {
 	reporter := base.NewMockReporter()
 	redReporter := NewReporter(reporter, WithPrefixConfig("foo", NewPrefixConfig()))
-	redReporter.ReportAttempt("foo")
+	redReporter.ReportRequest("foo")
 
 	Expect(reporter.AddCounterFuncCallCount()).To(Equal(1))
-	Expect(reporter.AddCounterFuncCallParams()[0].Arg0).To(Equal("foo"))
+	Expect(reporter.AddCounterFuncCallParams()[0].Arg0).To(Equal("foo-request"))
 	Expect(reporter.AddCounterFuncCallParams()[0].Arg1).To(Equal(float64(1)))
 }
 
-func (s *ReporterSuite) TestReportAttemptUnknownPrefix(t sweet.T) {
+func (s *ReporterSuite) TestReportRequestUnknownPrefix(t sweet.T) {
 	reporter := base.NewMockReporter()
 	redReporter := NewReporter(reporter)
-	redReporter.ReportAttempt("foo")
+	redReporter.ReportRequest("foo")
 	Expect(reporter.AddCounterFuncCallCount()).To(Equal(0))
 }
 
