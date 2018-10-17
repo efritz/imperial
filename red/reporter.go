@@ -29,7 +29,7 @@ func NewReporter(reporter base.Reporter, configs ...ConfigFunc) *Reporter {
 
 func (r *Reporter) Register() {
 	for prefix, config := range r.prefixConfigs {
-		r.reporter.RegisterCounter(prefix, r.requestMetricConfigs(config)...)
+		r.reporter.RegisterCounter(fmt.Sprintf("%s-request", prefix), r.requestMetricConfigs(config)...)
 		r.reporter.RegisterCounter(fmt.Sprintf("%s-error", prefix), r.errorMetricConfigs(config)...)
 		r.reporter.RegisterHistogram(fmt.Sprintf("%s-duration", prefix), r.durationMetricConfigs(config)...)
 	}
@@ -42,7 +42,7 @@ func (r *Reporter) ReportRequest(prefix string) {
 		return
 	}
 
-	r.reporter.AddCounter(fmt.Sprintf("%s-request",prefix), 1, r.requestMetricConfigs(config)...)
+	r.reporter.AddCounter(fmt.Sprintf("%s-request", prefix), 1, r.requestMetricConfigs(config)...)
 }
 
 func (r *Reporter) ReportError(prefix string, err error) {

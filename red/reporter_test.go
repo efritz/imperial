@@ -32,7 +32,7 @@ func (s *ReporterSuite) TestRegister(t sweet.T) {
 		histogramNames = append(histogramNames, param.Arg0)
 	}
 
-	Expect(counterNames).To(ConsistOf("foo", "foo-error", "bar", "bar-error", "baz", "baz-error"))
+	Expect(counterNames).To(ConsistOf("foo-request", "foo-error", "bar-request", "bar-error", "baz-request", "baz-error"))
 	Expect(histogramNames).To(ConsistOf("foo-duration", "bar-duration", "baz-duration"))
 }
 
