@@ -1,9 +1,12 @@
 package red
 
+import "github.com/efritz/imperial/base"
+
 type (
 	PrefixConfig struct {
 		buckets          []float64
 		errorInterpreter ErrorInterpreter
+		configs          []base.ConfigFunc
 	}
 
 	PrefixConfigFunc func(r *PrefixConfig)
@@ -15,6 +18,7 @@ func NewPrefixConfig(configs ...PrefixConfigFunc) *PrefixConfig {
 	config := &PrefixConfig{
 		buckets:          defaultBuckets,
 		errorInterpreter: DefaultErrorInterpreter,
+		configs:          []base.ConfigFunc{},
 	}
 
 	for _, f := range configs {
@@ -30,4 +34,8 @@ func WithPrefixBuckets(buckets []float64) PrefixConfigFunc {
 
 func WithPrefixErrorInterpreter(errorInterpreter ErrorInterpreter) PrefixConfigFunc {
 	return func(c *PrefixConfig) { c.errorInterpreter = errorInterpreter }
+}
+
+func WithPrefixReportConfigs(configs ...base.ConfigFunc) PrefixConfigFunc {
+	return func(c *PrefixConfig) { c.configs = append(c.configs, configs...) }
 }

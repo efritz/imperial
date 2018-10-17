@@ -29,23 +29,27 @@ func NewReporter(reporter base.Reporter, configs ...ConfigFunc) *Reporter {
 
 func (r *Reporter) Register() {
 	for prefix, config := range r.prefixConfigs {
-		r.reporter.RegisterCounter(fmt.Sprintf("%s-request", prefix), r.requestMetricConfigs(config)...)
-		r.reporter.RegisterCounter(fmt.Sprintf("%s-error", prefix), r.errorMetricConfigs(config)...)
-		r.reporter.RegisterHistogram(fmt.Sprintf("%s-duration", prefix), r.durationMetricConfigs(config)...)
+		r.reporter.RegisterCounter(fmt.Sprintf("%s-request", prefix), r.requestMetricConfigs(config, nil)...)
+		r.reporter.RegisterCounter(fmt.Sprintf("%s-error", prefix), r.errorMetricConfigs(config, nil)...)
+		r.reporter.RegisterHistogram(fmt.Sprintf("%s-duration", prefix), r.durationMetricConfigs(config, nil)...)
 	}
 }
 
-func (r *Reporter) ReportRequest(prefix string) {
+func (r *Reporter) ReportRequest(prefix string, configs ...base.ConfigFunc) {
 	config, ok := r.prefixConfigs[prefix]
 	if !ok {
 		r.logger.Printf("No configuration registered for prefix '%s'", prefix)
 		return
 	}
 
-	r.reporter.AddCounter(fmt.Sprintf("%s-request", prefix), 1, r.requestMetricConfigs(config)...)
+	r.reporter.AddCounter(
+		fmt.Sprintf("%s-request", prefix),
+		1,
+		r.requestMetricConfigs(config, configs)...,
+	)
 }
 
-func (r *Reporter) ReportError(prefix string, err error) {
+func (r *Reporter) ReportError(prefix string, err error, configs ...base.ConfigFunc) {
 	config, ok := r.prefixConfigs[prefix]
 	if !ok {
 		r.logger.Printf("No configuration registered for prefix '%s'", prefix)
@@ -61,15 +65,19 @@ func (r *Reporter) ReportError(prefix string, err error) {
 		"code": code,
 	}
 
-	configs := append(
-		[]base.ConfigFunc{base.WithAttributes(attributes)},
-		r.errorMetricConfigs(config)...,
+	configs = append(
+		configs,
+		base.WithAttributes(attributes),
 	)
 
-	r.reporter.AddCounter(fmt.Sprintf("%s-error", prefix), 1, configs...)
+	r.reporter.AddCounter(
+		fmt.Sprintf("%s-error", prefix),
+		1,
+		r.durationMetricConfigs(config, configs)...,
+	)
 }
 
-func (r *Reporter) ReportDuration(prefix string, duration float64) {
+func (r *Reporter) ReportDuration(prefix string, duration float64, configs ...base.ConfigFunc) {
 	config, ok := r.prefixConfigs[prefix]
 	if !ok {
 		r.logger.Printf("No configuration registered for prefix '%s'", prefix)
@@ -79,29 +87,35 @@ func (r *Reporter) ReportDuration(prefix string, duration float64) {
 	r.reporter.ObserveHistogram(
 		fmt.Sprintf("%s-duration", prefix),
 		duration,
-		r.durationMetricConfigs(config)...,
+		r.durationMetricConfigs(config, configs)...,
 	)
 }
 
 //
 //
 
-func (r *Reporter) requestMetricConfigs(config *PrefixConfig) []base.ConfigFunc {
-	return []base.ConfigFunc{
+func (r *Reporter) requestMetricConfigs(config *PrefixConfig, configs []base.ConfigFunc) []base.ConfigFunc {
+	defaultConfigs := []base.ConfigFunc{
 		base.WithHelp(""), // TODO
 	}
+
+	return append(append(defaultConfigs, config.configs...), configs...)
 }
 
-func (r *Reporter) errorMetricConfigs(config *PrefixConfig) []base.ConfigFunc {
-	return []base.ConfigFunc{
+func (r *Reporter) errorMetricConfigs(config *PrefixConfig, configs []base.ConfigFunc) []base.ConfigFunc {
+	defaultConfigs := []base.ConfigFunc{
 		base.WithExposedAttributes("code"),
 		base.WithHelp(""), // TODO
 	}
+
+	return append(append(defaultConfigs, config.configs...), configs...)
 }
 
-func (r *Reporter) durationMetricConfigs(config *PrefixConfig) []base.ConfigFunc {
-	return []base.ConfigFunc{
+func (r *Reporter) durationMetricConfigs(config *PrefixConfig, configs []base.ConfigFunc) []base.ConfigFunc {
+	defaultConfigs := []base.ConfigFunc{
 		base.WithBuckets(config.buckets),
 		base.WithHelp(""), // TODO
 	}
+
+	return append(append(defaultConfigs, config.configs...), configs...)
 }
